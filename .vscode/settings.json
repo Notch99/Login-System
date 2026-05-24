@@ -1,0 +1,22 @@
+{
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.import.gradle.enabled": true,
+    "java.import.gradle.wrapper.enabled": true,
+    "java.import.gradle.java.home": "C:\\Program Files\\Java\\jdk-17",
+    "java.jdt.ls.java.home": "C:\\Program Files\\Java\\jdk-21",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "gradle.nestedProjects": true,
+    "gradle.javaDebug": true,
+    "java.project.sourcePaths": [
+        "src/main/java"
+    ],
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar"
+    ],
+    "java.clean.workspace": true,
+    "java.reload.projects": true,
+    "files.exclude": {
+        "**/.gradle": true,
+        "**/build": false
+    }
+}

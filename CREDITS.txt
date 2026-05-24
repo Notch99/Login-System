@@ -1,0 +1,55 @@
+Login System Mod - Credits & Acknowledgments
+============================================
+
+This mod was originally developed for Minecraft Forge and has been converted 
+to work with the Fabric modding framework.
+
+Framework Credits:
+==================
+
+Fabric Team:
+- Thank you to the Fabric team for creating an excellent, lightweight modding 
+  framework that makes mod development accessible and efficient.
+- Special thanks to the maintainers of Fabric API, Fabric Loader, and Yarn mappings.
+
+Original Forge Framework:
+- This project was initially built on Minecraft Forge, and we acknowledge the 
+  foundational work done by the Forge team.
+- Thanks to LexManos, cpw, and the entire MinecraftForge community for their 
+  contributions to Minecraft modding.
+
+Mod Development:
+================
+
+Primary Author: Notch
+License: MIT License
+
+Dependencies:
+- MySQL JDBC Driver (mysql:mysql-connector-java)
+- MariaDB JDBC Driver (org.mariadb.jdbc:mariadb-java-client)
+- Fabric API
+- Fabric Loader
+
+Special Thanks:
+===============
+- Mojang Studios for Minecraft
+- FabricMC for the excellent modding framework
+- The Yarn project for providing open, community-driven mappings
+- The Minecraft modding community for their continued support and innovation
+
+Resources:
+==========
+- Fabric Documentation: https://fabricmc.net/wiki/
+- Fabric API: https://github.com/FabricMC/fabric
+- Yarn Mappings: https://github.com/FabricMC/yarn
+- Fabric Community: https://discord.gg/v6v4pMv
+
+License Information:
+====================
+This mod is licensed under the MIT License, allowing for open source use 
+and modification. See LICENSE.txt for full license details.
+
+The embedded JDBC drivers maintain their respective licenses:
+- MySQL Connector/J: GPL v2 with FOSS License Exception
+- MariaDB Java Client: LGPL v2.1
+

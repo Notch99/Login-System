@@ -1,0 +1,122 @@
+plugins {
+    id 'fabric-loom' version '1.3.8'
+    id 'maven-publish'
+}
+
+// Use Java 21 toolchain (will download automatically if not installed)
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+version = project.mod_version
+group = project.mod_group_id
+
+base {
+    archivesName = 'loginsystem'
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'Fabric'
+        url = 'https://maven.fabricmc.net/'
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    
+    // MySQL JDBC Driver - embedded in final JAR
+    implementation 'mysql:mysql-connector-java:8.0.33'
+    
+    // MariaDB JDBC Driver - embedded in final JAR (backup)
+    implementation 'org.mariadb.jdbc:mariadb-java-client:3.1.4'
+    
+    // BCrypt for password hashing - embedded in final JAR
+    implementation 'org.mindrot:jbcrypt:0.4'
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "minecraft_version", project.minecraft_version
+    inputs.property "loader_version", project.loader_version
+    filteringCharset "UTF-8"
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version,
+               "minecraft_version": project.minecraft_version,
+               "loader_version": project.loader_version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = "UTF-8"
+    it.options.release = 21
+}
+
+java {
+    withSourcesJar()
+
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.archivesBaseName}"}
+    }
+    
+    // دمج JDBC drivers في JAR
+    from {
+        configurations.runtimeClasspath.findAll { it.name.endsWith('.jar') && 
+            (it.name.contains('mysql-connector') || it.name.contains('mariadb') || it.name.contains('jbcrypt')) 
+        }.collect { zipTree(it) }
+    }
+    
+    // تحسين حجم JAR بإزالة الملفات غير الضرورية
+    exclude '**/module-info.class'
+    exclude '**/META-INF/maven/**'
+    exclude '**/META-INF/gradle/**'
+    exclude '**/META-INF/*.SF'
+    exclude '**/META-INF/*.DSA'
+    exclude '**/META-INF/*.RSA'
+    exclude '**/META-INF/LICENSE*'
+    exclude '**/META-INF/NOTICE*'
+    exclude '**/*.md'
+    exclude '**/*.txt'
+    exclude '**/changelog*'
+    
+    // تجنب تضارب الملفات
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// مهمة لفحص حجم JAR النهائي
+task checkJarSize {
+    doLast {
+        def jarFile = file("build/libs/${base.archivesName.get()}-${version}.jar")
+        if (jarFile.exists()) {
+            def sizeInMB = jarFile.length() / (1024 * 1024)
+            println "📦 JAR Size: ${String.format('%.2f', sizeInMB)} MB"
+            if (sizeInMB > 5) {
+                println "⚠️  Warning: JAR size exceeds 5MB limit!"
+            } else {
+                println "✅ JAR size is within 5MB limit"
+            }
+        }
+    }
+}
+
+build.finalizedBy checkJarSize
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}

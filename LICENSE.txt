@@ -1,0 +1,55 @@
+MIT License
+
+Copyright (c) 2024 Login System Mod
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=== Third-Party Dependencies ===
+
+This software includes the following third-party dependencies:
+
+1. MySQL Connector/J
+   - License: GPL v2 with FOSS License Exception
+   - Website: https://dev.mysql.com/downloads/connector/j/
+   - Used for MySQL database connectivity
+
+2. MariaDB Java Client
+   - License: LGPL v2.1
+   - Website: https://mariadb.com/kb/en/mariadb-connector-j/
+   - Used for MariaDB database connectivity
+
+3. Fabric API
+   - License: Apache License 2.0
+   - Website: https://github.com/FabricMC/fabric
+   - Required runtime dependency for Fabric mods
+
+4. Fabric Loader
+   - License: Apache License 2.0
+   - Website: https://github.com/FabricMC/fabric-loader
+   - Required for loading Fabric mods
+
+=== Framework Acknowledgments ===
+
+This mod is built using the Fabric modding framework:
+- Fabric: https://fabricmc.net/
+- Yarn Mappings: https://github.com/FabricMC/yarn
+
+The mod was originally developed for Minecraft Forge and converted to Fabric.
+We acknowledge the foundational work of both modding frameworks in enabling
+the Minecraft modding ecosystem.

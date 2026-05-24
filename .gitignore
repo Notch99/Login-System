@@ -1,0 +1,39 @@
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
+
+# idea
+out
+*.ipr
+*.iws
+*.iml
+.idea
+
+# gradle
+build
+.gradle
+
+# other
+eclipse
+run
+
+# Fabric specific
+.fabric
+remappedSrc
+run/
+
+# Database files (if using file storage)
+playerdata/
+*.db
+*.sqlite
+
+# Config backups
+config/*.bak
+
+# Logs
+logs/
+*.log

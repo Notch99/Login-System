@@ -1,0 +1,54 @@
+Login System Mod - Fabric Edition Changelog
+==========================================
+
+v1.0 - Fabric Conversion
+========================
+ - ✅ Converted from Forge to Fabric
+ - ✅ Updated all APIs to use Fabric instead of MinecraftForge
+ - ✅ Support for Minecraft 1.20 to 1.20.6
+ - ✅ Fabric API integration
+ - ✅ Maintained all original features:
+   * Player registration and login system
+   * Database support (MySQL/MariaDB)
+   * File-based storage fallback
+   * Waiting area teleportation
+   * Inventory hiding for unlogged players
+   * Blindness effect for unlogged players
+   * Admin commands (/loadmin info, /loadmin delete)
+   * Block breaking prevention
+   * Damage prevention
+   * Movement restriction
+
+Features:
+=========
+- 🔐 Secure password hashing (SHA-256)
+- 🗄️ Database support with JDBC drivers embedded
+- 📁 File-based storage as fallback
+- ⏰ Configurable login timeout
+- 🎮 Commands: /register, /login, /changepassword
+- 👑 Admin commands for password management
+- 🚫 Comprehensive protection for unlogged players
+- 🌍 Waiting area system
+- 📝 Fully configurable via config/loginsystem.properties
+
+Installation:
+=============
+1. Install Fabric Loader on your server
+2. Install Fabric API
+3. Place loginsystem-1.0.jar in your mods folder
+4. Configure settings in config/loginsystem.properties
+5. Restart server
+
+Requirements:
+=============
+- Minecraft 1.20 - 1.20.6
+- Fabric Loader 0.14.22+
+- Fabric API
+- Java 17+
+- Optional: MySQL/MariaDB database
+
+Support:
+========
+For support and configuration help, check the generated config file at:
+config/loginsystem.properties
+
