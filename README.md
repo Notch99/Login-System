@@ -1,17 +1,24 @@
-# 🔐 Login System Mod - Fabric Edition
+# 🔐 Login System Mod v2.1.0 - Fabric Edition
 
 A comprehensive authentication system for Minecraft Fabric servers that requires players to register and login before they can interact with the game world.
 
 ## ✨ Features
 
 ### 🔒 Security Features
-- **SHA-256 Encryption**: All passwords are securely hashed
-- **Database Support**: MySQL and MariaDB with embedded JDBC drivers
+- **BCrypt Encryption**: All passwords are securely hashed using industry-standard BCrypt
+- **🚫 Anti-Spoofing Protection**: Intercepts blocks malicious double-logins
+- **Database Support**: MySQL and MariaDB with embedded JDBC drivers and timeout watchdogs
 - **File Fallback**: Automatic fallback to file storage if database is disabled
 - **Complete Player Lockdown**: 13+ protection systems for unlogged players (movement, block breaking, damage, etc.)
 
+### 🌐 Admin Web Dashboard (NEW!)
+- **Browser-Based Management**: Monitor your server via a live Web Interface
+- **Live Inventories**: View live inventories of players through the web browser.
+- **Remote Moderation**: Kick, Ban, Mute, and Unban entirely remotely.
+
 ### 🎮 Player Experience
 - **Waiting Area System**: Players are teleported to a safe area until login
+- **💾 Offline Persistence**: Inventories and precise locations are safely backed up on join, preventing falling into the void.
 - **Inventory Protection**: Player inventories are hidden until authentication
 - **Blindness Effect**: Visual restriction for unlogged players
 - **Configurable Timeout**: Automatic kick for inactive players
@@ -22,12 +29,12 @@ A comprehensive authentication system for Minecraft Fabric servers that requires
   - `/login <password>`
   - `/changepassword <oldPassword> <newPassword>`
 - **Admin Commands (OP Level 2+)**:
-  - `/loadmin info <player>` - View player's password info
-  - `/loadmin delete <player>` - Delete a player's account
+  - `/loadmin` - Opens the Admin Management GUI
+  - *Note: Passwords are no longer visible to admins for security, but can be securely resettled.*
 
 ## 📋 System Requirements
-- **Minecraft**: 1.20 - 1.20.6
-- **Fabric Loader**: 0.14.22+
+- **Minecraft**: 1.21.x
+- **Fabric Loader**: Compatible with latest 1.21.x loaders
 - **Fabric API**: Required
 - **Java**: 17 or higher
 - **Server Side Only**: No client installation required
