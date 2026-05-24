@@ -1,34 +1,41 @@
-# 🔐 Login System Mod v1.6.0
+# 🔐 Login System Mod v2.1.0
 
 Advanced authentication system for Minecraft servers with database support, secure encryption, admin alerts, and intuitive GUI management.
 
 ## ✨ Features
 
 ### 🔒 Security Features
-- **SHA-256 Encryption**: All passwords are securely hashed
-- **🚨 NEW: Admin Alert System**: Live notifications for suspicious logins and excessive failed attempts. 
-- **Database Support**: MySQL and MariaDB with embedded JDBC drivers
+- **BCrypt Encryption**: All passwords are securely hashed using industry-standard BCrypt (Cost 12)
+- **🚫 Anti-Spoofing Protection**: Intercepts and blocks malicious double-logins completely
+- **🚨 Admin Alert System**: Live notifications for suspicious logins and excessive failed attempts. 
+- **Database Support**: MySQL and MariaDB with embedded JDBC drivers (with Fast 3-sec Crash Guard)
 - **File Fallback**: Automatic fallback to file storage if database fails
-- **Admin Password Management**: View and manage player passwords via GUI
+- **Admin Password Management**: Reset player passwords via GUI
 - **Complete Player Lockdown**: 13+ protection systems for unlogged players
+
+### 🌐 Admin Web Dashboard (NEW!)
+- **Browser-Based Management**: Monitor your server via a live Web Interface on `http://localhost:<port>`
+- **Live Inventories**: View live inventories of players through the web browser.
+- **Remote Moderation**: Kick, Ban, Mute, and Unban entirely remotely.
 
 ### 🎮 Player Experience
 - **Waiting Area System**: Players are teleported to a safe area until login
+- **💾 Offline Persistence**: Inventories and precise locations are backed up on join, preventing void-drop crashes.
 - **Inventory Protection**: Player inventories are hidden until authentication
 - **Blindness Effect**: Visual restriction for unlogged players
 - **Configurable Timeout**: Automatic kick for inactive players
 - **Complete Restriction**: Unlogged players cannot interact with anything
 
 ### ⚙️ Administration
-- **🎨 Admin GUI System**: Modern, intuitive graphical interface
+- **🎨 Admin GUI System**: Modern, intuitive in-game graphical interface (`/loadmin`)
 - **Real Player Skins**: Player heads display actual Minecraft skins
-- **Password Viewer**: Hover over players to see their passwords
+- **Secure Password Reset**: Instantly generate random 6-digit passwords for users
 - **One-Click Management**: Easy player account deletion
 - **Real-time Logging**: Comprehensive logging system and security events
 
 ## 📋 System Requirements
-- **Minecraft**: 1.20 - 1.20.4
-- **Forge / NeoForge**: 47.0.0 - 48.0.0
+- **Minecraft**: 1.21.x
+- **NeoForge**: Compatible with 1.21.x NeoForge distributions
 - **Java**: 17 or higher
 - **Server Side Only**: No client installation required
 
