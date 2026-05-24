@@ -1,0 +1,27 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+
+[[mods]]
+modId="loginsystem"
+version="${file.jarVersion}"
+displayName="Login System Mod"
+description=" Advanced Login System for Minecraft servers with SHA-256 encryption, database support, and embedded JDBC drivers. Features waiting area, inventory protection, and comprehensive admin tools."
+authors="Notch, LoginSystem Team"
+
+[[dependencies.loginsystem]]
+modId="neoforge"
+type="required"
+versionRange="[21,)"
+ordering="NONE"
+side="SERVER"
+
+[[dependencies.loginsystem]]
+modId="minecraft"
+type="required"
+versionRange="[1.21,1.22)"
+ordering="NONE"
+side="SERVER"
+
+[[mixins]]
+config="loginsystem.mixins.json"
