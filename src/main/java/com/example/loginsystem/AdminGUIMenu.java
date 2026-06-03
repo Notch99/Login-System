@@ -1,22 +1,22 @@
 package com.example.loginsystem;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.inventory.SimpleInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.screen.GenericContainerScreenHandler;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.screen.slot.SlotActionType;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.Container;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -24,31 +24,31 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.UUID;
 
-public class AdminGUIMenu extends ScreenHandler {
-    private final Inventory inventory;
+public class AdminGUIMenu extends AbstractContainerMenu {
+    private final Container inventory;
     private final LoginSystem loginSystem;
     private final String menuType;
     private UUID selectedPlayerUUID = null;
 
-    public AdminGUIMenu(int syncId, PlayerInventory playerInventory, Inventory inventory, LoginSystem loginSystem, String menuType) {
-        super(inventory.size() == 27 ? ScreenHandlerType.GENERIC_9X3 : ScreenHandlerType.GENERIC_9X6, syncId);
+    public AdminGUIMenu(int syncId, Inventory playerInventory, Container inventory, LoginSystem loginSystem, String menuType) {
+        super(inventory.getContainerSize() == 27 ? MenuType.GENERIC_9x3 : MenuType.GENERIC_9x6, syncId);
         this.inventory = inventory;
         this.loginSystem = loginSystem;
         this.menuType = menuType;
 
-        int rows = inventory.size() / 9;
+        int rows = inventory.getContainerSize() / 9;
 
         // Add slots for the GUI inventory
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < 9; col++) {
                 this.addSlot(new Slot(inventory, col + row * 9, 8 + col * 18, 18 + row * 18) {
                     @Override
-                    public boolean canInsert(ItemStack stack) {
+                    public boolean mayPlace(ItemStack stack) {
                         return false;
                     }
 
                     @Override
-                    public boolean canTakeItems(PlayerEntity playerEntity) {
+                    public boolean mayPickup(Player playerEntity) {
                         return false;
                     }
                 });
@@ -70,29 +70,29 @@ public class AdminGUIMenu extends ScreenHandler {
     }
 
     @Override
-    public void onSlotClick(int slotIndex, int button, SlotActionType actionType, PlayerEntity player) {
-        if (slotIndex < 0 || slotIndex >= inventory.size()) {
+    public void clicked(int slotIndex, int button, net.minecraft.world.inventory.ContainerInput actionType, Player player) {
+        if (slotIndex < 0 || slotIndex >= inventory.getContainerSize()) {
             return;
         }
 
-        ItemStack clickedItem = inventory.getStack(slotIndex);
-        if (clickedItem.isEmpty() || !(player instanceof ServerPlayerEntity serverPlayer)) {
+        ItemStack clickedItem = inventory.getItem(slotIndex);
+        if (clickedItem.isEmpty() || !(player instanceof ServerPlayer serverPlayer)) {
             return;
         }
 
         // Bypassing NBT completely: Match strictly by Item Type and String Identifiers
-        String rawName = clickedItem.getName().getString().replaceAll("§[0-9a-fk-or]", "");
+        String rawName = clickedItem.getHoverName().getString().replaceAll("§[0-9a-fk-or]", "");
         
         // Main Menu: Info Book
         if (clickedItem.getItem() == Items.WRITABLE_BOOK && rawName.contains("Info")) {
-            serverPlayer.closeHandledScreen();
+            serverPlayer.closeContainer();
             loginSystem.openPlayersListGUI(serverPlayer);
             return;
         }
 
         // Main Menu: Delete Players
         if (clickedItem.getItem() == Items.BARRIER && rawName.contains("Delete Player")) {
-            serverPlayer.closeHandledScreen();
+            serverPlayer.closeContainer();
             loginSystem.openDeletePlayersGUI(serverPlayer);
             return;
         }
@@ -110,23 +110,23 @@ public class AdminGUIMenu extends ScreenHandler {
             }
             
             if (targetUUID != null) {
-                if (actionType == SlotActionType.PICKUP) {
+                if (actionType == ContainerInput.PICKUP) {
                     if ("DELETE".equals(menuType)) {
                         deletePlayer(serverPlayer, targetUUID);
-                        serverPlayer.closeHandledScreen();
+                        serverPlayer.closeContainer();
                         loginSystem.openDeletePlayersGUI(serverPlayer);
                     } else if ("VIEW".equals(menuType)) {
                         String newPassword = String.valueOf(100000 + new java.util.Random().nextInt(900000));
                         loginSystem.forceChangePassword(targetUUID, newPassword);
-                        serverPlayer.sendMessage(Text.literal("§aSuccessfully generated new password!").formatted(Formatting.GREEN), false);
-                        serverPlayer.sendMessage(Text.literal("§6New Password: §e" + newPassword).formatted(Formatting.GOLD), false);
+                        serverPlayer.sendSystemMessage(Component.literal("§aSuccessfully generated new password!").withStyle(ChatFormatting.GREEN));
+                        serverPlayer.sendSystemMessage(Component.literal("§6New Password: §e" + newPassword).withStyle(ChatFormatting.GOLD));
                     }
                 }
             }
         }
     }
 
-    private void deletePlayer(ServerPlayerEntity admin, UUID targetUUID) {
+    private void deletePlayer(ServerPlayer admin, UUID targetUUID) {
         try {
             String playerName = loginSystem.getPlayerName(LoginSystem.serverInstance, targetUUID);
 
@@ -138,11 +138,11 @@ public class AdminGUIMenu extends ScreenHandler {
                         int rowsAffected = pstmt.executeUpdate();
                         if (rowsAffected > 0) {
                             loginSystem.removePlayerPassword(targetUUID);
-                            admin.sendMessage(Text.literal("Deleted password for player: " + playerName)
-                                    .formatted(Formatting.GREEN), false);
+                            admin.sendSystemMessage(Component.literal("Deleted password for player: " + playerName)
+                                    .withStyle(ChatFormatting.GREEN));
                         } else {
-                            admin.sendMessage(Text.literal("No password found for player: " + playerName)
-                                    .formatted(Formatting.RED), false);
+                            admin.sendSystemMessage(Component.literal("No password found for player: " + playerName)
+                                    .withStyle(ChatFormatting.RED));
                         }
                     }
                 }
@@ -150,33 +150,33 @@ public class AdminGUIMenu extends ScreenHandler {
                 if (loginSystem.hasPlayerPassword(targetUUID)) {
                     loginSystem.removePlayerPassword(targetUUID);
                     loginSystem.savePasswordsToFile();
-                    admin.sendMessage(Text.literal("Deleted password for player: " + playerName)
-                            .formatted(Formatting.GREEN), false);
+                    admin.sendSystemMessage(Component.literal("Deleted password for player: " + playerName)
+                            .withStyle(ChatFormatting.GREEN));
                 } else {
-                    admin.sendMessage(Text.literal("No password found for player: " + playerName)
-                            .formatted(Formatting.RED), false);
+                    admin.sendSystemMessage(Component.literal("No password found for player: " + playerName)
+                            .withStyle(ChatFormatting.RED));
                 }
             }
         } catch (SQLException e) {
-            admin.sendMessage(Text.literal("Failed to delete password from database!")
-                    .formatted(Formatting.RED), false);
+            admin.sendSystemMessage(Component.literal("Failed to delete password from database!")
+                    .withStyle(ChatFormatting.RED));
             LoginSystem.LOGGER.error("Failed to delete password for UUID: " + targetUUID, e);
         }
     }
 
     @Override
-    public ItemStack quickMove(PlayerEntity player, int index) {
+    public ItemStack quickMoveStack(Player player, int index) {
         return ItemStack.EMPTY; // Disable shift-click
     }
 
     @Override
-    public boolean canUse(PlayerEntity player) {
+    public boolean stillValid(Player player) {
         return loginSystem.isPlayerOp(player); // Require admin permissions via ops.json
     }
 
     @Override
-    public void onClosed(PlayerEntity player) {
-        super.onClosed(player);
+    public void removed(Player player) {
+        super.removed(player);
         selectedPlayerUUID = null;
     }
 

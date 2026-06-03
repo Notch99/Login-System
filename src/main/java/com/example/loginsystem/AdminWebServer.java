@@ -5,7 +5,7 @@ import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -197,7 +197,7 @@ public class AdminWebServer {
                     boolean isOnline = false;
                     String coords = "N/A";
                     if (LoginSystem.serverInstance != null) {
-                        ServerPlayerEntity playerEntity = LoginSystem.serverInstance.getPlayerManager().getPlayer(uuid);
+                        ServerPlayer playerEntity = LoginSystem.serverInstance.getPlayerList().getPlayer(uuid);
                         if (playerEntity != null) {
                             isOnline = true;
                             coords = String.format("X: %.1f, Y: %.1f, Z: %.1f", 

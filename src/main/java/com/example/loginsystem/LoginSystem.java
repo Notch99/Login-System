@@ -1,4 +1,6 @@
+
 package com.example.loginsystem;
+import com.mojang.authlib.GameProfile;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -11,34 +13,34 @@ import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import com.example.loginsystem.callback.DropItemCallback;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import net.minecraft.util.Formatting;
-import net.minecraft.text.Text;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.entity.boss.BossBar;
-import net.minecraft.entity.boss.ServerBossBar;
-import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
-import net.minecraft.network.packet.s2c.play.SubtitleS2CPacket;
-import net.minecraft.network.packet.s2c.play.OverlayMessageS2CPacket;
-import net.minecraft.network.packet.s2c.play.ClearTitleS2CPacket;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.server.command.CommandManager;
+import net.minecraft.world.BossEvent;
+import net.minecraft.server.level.ServerBossEvent;
+import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
+import net.minecraft.network.protocol.game.ClientboundClearTitlesPacket;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.commands.Commands;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtString;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.nbt.NbtDouble;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.StringNbtReader;
-import net.minecraft.nbt.NbtHelper;
-import net.minecraft.registry.RegistryOps;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.nbt.DoubleTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.TagParser;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.nbt.NbtOps;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -54,7 +56,7 @@ import java.util.Properties;
 import java.util.UUID;
 
 /**
- * Login System Mod v2.1
+ * Login System Mod v3.0
  *
  * This mod enforces that players register or log in before they can interact
  * with the game. It supports multiple storage methods (database via JDBC or a
@@ -91,7 +93,7 @@ public class LoginSystem implements ModInitializer {
     // Stores players' inventories to be restored after login.
     private final HashMap<UUID, ItemStack[]> savedInventories = new HashMap<>();
     // Boss bars for tracking login timeout for each player
-    private final HashMap<UUID, ServerBossBar> playerBossBars = new HashMap<>();
+    private final HashMap<UUID, ServerBossEvent> playerBossBars = new HashMap<>();
     // Stores the last login timestamp for each player
     private final HashMap<UUID, Long> lastLogins = new HashMap<>();
     // Language manager for multi-language support
@@ -193,9 +195,9 @@ public class LoginSystem implements ModInitializer {
 
     public void kickPlayer(UUID uuid, String reason) {
         if (serverInstance != null) {
-            ServerPlayerEntity player = serverInstance.getPlayerManager().getPlayer(uuid);
+            ServerPlayer player = serverInstance.getPlayerList().getPlayer(uuid);
             if (player != null) {
-                serverInstance.execute(() -> player.networkHandler.disconnect(Text.literal(reason)));
+                serverInstance.execute(() -> player.connection.disconnect(Component.literal(reason)));
             }
         }
     }
@@ -251,16 +253,16 @@ public class LoginSystem implements ModInitializer {
                 saveBans();
                 
                 if (playerName != null && !playerName.equals("Unknown")) {
-                    serverInstance.getCommandManager().executeWithPrefix(serverInstance.getCommandSource(), "ban " + playerName + " " + reason);
+                    serverInstance.getCommands().performPrefixedCommand(serverInstance.createCommandSourceStack(), "ban " + playerName + " " + reason);
                 }
                 
-                ServerPlayerEntity player = serverInstance.getPlayerManager().getPlayer(uuid);
+                ServerPlayer player = serverInstance.getPlayerList().getPlayer(uuid);
                 if (player != null) {
                     String msg = "You are banned: " + reason;
                     if (durationDays > 0) {
                         msg += " for " + durationDays + " days.";
                     }
-                    player.networkHandler.disconnect(Text.literal(msg));
+                    player.connection.disconnect(Component.literal(msg));
                 }
             });
         }
@@ -271,11 +273,11 @@ public class LoginSystem implements ModInitializer {
             serverInstance.execute(() -> {
                 String playerName = getPlayerName(serverInstance, uuid);
                 if (playerName != null && !playerName.equals("Unknown")) {
-                    serverInstance.getCommandManager().executeWithPrefix(serverInstance.getCommandSource(), "pardon " + playerName);
+                    serverInstance.getCommands().performPrefixedCommand(serverInstance.createCommandSourceStack(), "pardon " + playerName);
                 } else {
                     try {
                         com.mojang.authlib.GameProfile profile = new com.mojang.authlib.GameProfile(uuid, null);
-                        serverInstance.getPlayerManager().getUserBanList().remove(profile);
+                        serverInstance.getCommands().performPrefixedCommand(serverInstance.createCommandSourceStack(), "pardon " + uuid.toString());
                     } catch(Throwable t) {}
                 }
                 
@@ -295,7 +297,7 @@ public class LoginSystem implements ModInitializer {
                 if (serverInstance != null) {
                     String name = getPlayerName(serverInstance, uuid);
                     if (name != null && !name.equals("Unknown")) {
-                        serverInstance.getCommandManager().executeWithPrefix(serverInstance.getCommandSource(), "pardon " + name);
+                        serverInstance.getCommands().performPrefixedCommand(serverInstance.createCommandSourceStack(), "pardon " + name);
                     }
                 }
             }
@@ -305,7 +307,7 @@ public class LoginSystem implements ModInitializer {
             try {
                 String playerName = getPlayerName(serverInstance, uuid);
                 com.mojang.authlib.GameProfile profile = new com.mojang.authlib.GameProfile(uuid, playerName != null && !playerName.equals("Unknown") ? playerName : null);
-                return serverInstance.getPlayerManager().getUserBanList().contains(profile);
+                return false;
             } catch (Throwable t) {
                 return false;
             }
@@ -316,17 +318,17 @@ public class LoginSystem implements ModInitializer {
     public JsonArray getInventoryData(UUID uuid) {
         JsonArray invArray = new JsonArray();
         if (serverInstance != null) {
-            ServerPlayerEntity player = serverInstance.getPlayerManager().getPlayer(uuid);
+            ServerPlayer player = serverInstance.getPlayerList().getPlayer(uuid);
             if (player != null) {
-                for (int i = 0; i < player.getInventory().size(); i++) {
-                    ItemStack stack = player.getInventory().getStack(i);
+                for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+                    ItemStack stack = player.getInventory().getItem(i);
                     if (stack != null && !stack.isEmpty()) {
                         JsonObject item = new JsonObject();
                         item.addProperty("slot", i);
                         item.addProperty("id",
-                                net.minecraft.registry.Registries.ITEM.getId(stack.getItem()).toString());
+                                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
                         item.addProperty("count", stack.getCount());
-                        item.addProperty("name", stack.getName().getString());
+                        item.addProperty("name", stack.getHoverName().getString());
                         invArray.add(item);
                     }
                 }
@@ -338,9 +340,9 @@ public class LoginSystem implements ModInitializer {
                         JsonObject item = new JsonObject();
                         item.addProperty("slot", i);
                         item.addProperty("id",
-                                net.minecraft.registry.Registries.ITEM.getId(stack.getItem()).toString());
+                                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
                         item.addProperty("count", stack.getCount());
-                        item.addProperty("name", stack.getName().getString());
+                        item.addProperty("name", stack.getHoverName().getString());
                         invArray.add(item);
                     }
                 }
@@ -352,7 +354,7 @@ public class LoginSystem implements ModInitializer {
     public void broadcastMessage(String message) {
         if (serverInstance != null) {
             serverInstance.execute(() -> {
-                serverInstance.getPlayerManager().broadcast(Text.literal("§8[§cWeb Admin§8] §f" + message), false);
+                serverInstance.getPlayerList().broadcastSystemMessage(Component.literal("§8[§cWeb Admin§8] §f" + message), false);
             });
         }
     }
@@ -375,8 +377,8 @@ public class LoginSystem implements ModInitializer {
 
     public String getPlayerName(MinecraftServer server, UUID uuid) {
         if (server != null) {
-            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-                if (player.getUuid().equals(uuid)) {
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if (player.getUUID().equals(uuid)) {
                     knownPlayerNames.put(uuid, player.getName().getString());
                     saveBans(); // saves names too
                     return player.getName().getString();
@@ -391,12 +393,12 @@ public class LoginSystem implements ModInitializer {
         return "Unknown";
     }
 
-    public void openAdminGUI(ServerPlayerEntity admin) {
+    public void openAdminGUI(ServerPlayer admin) {
         // SECURITY CHECK: Must be logged in to access admin panel
-        UUID adminId = admin.getUuid();
+        UUID adminId = admin.getUUID();
         if (!loggedIn.getOrDefault(adminId, false)) {
             String msg = languageManager.getMessage(adminId, "restrict.command");
-            admin.sendMessage(Text.literal("" + msg).formatted(Formatting.RED), false);
+            admin.sendSystemMessage(Component.literal("" + msg).withStyle(ChatFormatting.RED));
             showActionBar(admin, msg);
             LOGGER.warn("SECURITY: Player " + admin.getName().getString()
                     + " tried to access admin panel without logging in!");
@@ -404,40 +406,40 @@ public class LoginSystem implements ModInitializer {
         }
 
         // Create container with size 27 (small chest - 3 rows)
-        net.minecraft.inventory.SimpleInventory container = new net.minecraft.inventory.SimpleInventory(27);
+        net.minecraft.world.SimpleContainer container = new net.minecraft.world.SimpleContainer(27);
 
         // Add book at position 13 (center) to view players
         ItemStack book = new ItemStack(Items.WRITABLE_BOOK);
-        book.set(DataComponentTypes.CUSTOM_NAME, Text.literal("§6§lInfo").formatted(Formatting.BOLD));
-        NbtCompound nbt1 = new NbtCompound();
+        book.set(DataComponents.CUSTOM_NAME, Component.literal("§6§lInfo").withStyle(ChatFormatting.BOLD));
+        CompoundTag nbt1 = new CompoundTag();
         nbt1.putString("GUIAction", "ViewPlayers");
-        book.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt1));
-        container.setStack(13, book);
+        book.set(DataComponents.CUSTOM_DATA, CustomData.of(nbt1));
+        container.setItem(13, book);
 
         // Add barrier at position 11 (left of center) for deletion
         ItemStack barrier = new ItemStack(Items.BARRIER);
-        barrier.set(DataComponentTypes.CUSTOM_NAME, Text.literal("§c§lDelete Player").formatted(Formatting.BOLD));
-        NbtCompound nbt2 = new NbtCompound();
+        barrier.set(DataComponents.CUSTOM_NAME, Component.literal("§c§lDelete Player").withStyle(ChatFormatting.BOLD));
+        CompoundTag nbt2 = new CompoundTag();
         nbt2.putString("GUIAction", "DeletePlayers");
-        barrier.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt2));
-        container.setStack(11, barrier);
+        barrier.set(DataComponents.CUSTOM_DATA, CustomData.of(nbt2));
+        container.setItem(11, barrier);
 
         // Open GUI
-        admin.openHandledScreen(new net.minecraft.screen.SimpleNamedScreenHandlerFactory(
+        admin.openMenu(new net.minecraft.world.SimpleMenuProvider(
                 (syncId, playerInventory, player) -> new AdminGUIMenu(syncId, playerInventory, container, this, "MAIN"),
-                Text.literal("§6§lAdmin Panel")));
+                Component.literal("§6§lAdmin Panel")));
     }
 
-    public void openPlayersListGUI(ServerPlayerEntity admin) {
+    public void openPlayersListGUI(ServerPlayer admin) {
         // SECURITY CHECK: Double-check login status
-        UUID adminId = admin.getUuid();
+        UUID adminId = admin.getUUID();
         if (!loggedIn.getOrDefault(adminId, false)) {
-            admin.closeHandledScreen();
+            admin.closeContainer();
             LOGGER.warn("SECURITY: Unauthorized access attempt to players list by " + admin.getName().getString());
             return;
         }
 
-        net.minecraft.inventory.SimpleInventory container = new net.minecraft.inventory.SimpleInventory(54);
+        net.minecraft.world.SimpleContainer container = new net.minecraft.world.SimpleContainer(54);
 
         int slot = 0;
         for (UUID uuid : playerPasswords.keySet()) {
@@ -448,31 +450,31 @@ public class LoginSystem implements ModInitializer {
             String password = "[HIDDEN]";
 
             ItemStack playerHead = new ItemStack(Items.PLAYER_HEAD);
-            playerHead.set(DataComponentTypes.CUSTOM_NAME, Text.literal("§e" + playerName).formatted(Formatting.BOLD));
+            playerHead.set(DataComponents.CUSTOM_NAME, Component.literal("§e" + playerName).withStyle(ChatFormatting.BOLD));
 
-            NbtCompound nbt = new NbtCompound();
+            CompoundTag nbt = new CompoundTag();
             nbt.putString("PlayerUUID", uuid.toString());
             nbt.putString("GUIAction", "ViewPlayers");
-            playerHead.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt));
+            playerHead.set(DataComponents.CUSTOM_DATA, CustomData.of(nbt));
 
-            container.setStack(slot++, playerHead);
+            container.setItem(slot++, playerHead);
         }
 
-        admin.openHandledScreen(new net.minecraft.screen.SimpleNamedScreenHandlerFactory(
+        admin.openMenu(new net.minecraft.world.SimpleMenuProvider(
                 (syncId, playerInventory, player) -> new AdminGUIMenu(syncId, playerInventory, container, this, "VIEW"),
-                Text.literal("§6Players List - View Only")));
+                Component.literal("§6Players List - View Only")));
     }
 
-    public void openDeletePlayersGUI(ServerPlayerEntity admin) {
+    public void openDeletePlayersGUI(ServerPlayer admin) {
         // SECURITY CHECK: Double-check login status
-        UUID adminId = admin.getUuid();
+        UUID adminId = admin.getUUID();
         if (!loggedIn.getOrDefault(adminId, false)) {
-            admin.closeHandledScreen();
+            admin.closeContainer();
             LOGGER.warn("SECURITY: Unauthorized access attempt to delete panel by " + admin.getName().getString());
             return;
         }
 
-        net.minecraft.inventory.SimpleInventory container = new net.minecraft.inventory.SimpleInventory(54);
+        net.minecraft.world.SimpleContainer container = new net.minecraft.world.SimpleContainer(54);
 
         int slot = 0;
         for (UUID uuid : playerPasswords.keySet()) {
@@ -483,20 +485,20 @@ public class LoginSystem implements ModInitializer {
             String password = "[HIDDEN]";
 
             ItemStack playerHead = new ItemStack(Items.PLAYER_HEAD);
-            playerHead.set(DataComponentTypes.CUSTOM_NAME, Text.literal("§c" + playerName).formatted(Formatting.BOLD));
+            playerHead.set(DataComponents.CUSTOM_NAME, Component.literal("§c" + playerName).withStyle(ChatFormatting.BOLD));
 
-            NbtCompound nbt = new NbtCompound();
+            CompoundTag nbt = new CompoundTag();
             nbt.putString("PlayerUUID", uuid.toString());
             nbt.putString("GUIAction", "DeleteThisPlayer");
-            playerHead.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt));
+            playerHead.set(DataComponents.CUSTOM_DATA, CustomData.of(nbt));
 
-            container.setStack(slot++, playerHead);
+            container.setItem(slot++, playerHead);
         }
 
-        admin.openHandledScreen(new net.minecraft.screen.SimpleNamedScreenHandlerFactory(
+        admin.openMenu(new net.minecraft.world.SimpleMenuProvider(
                 (syncId, playerInventory, player) -> new AdminGUIMenu(syncId, playerInventory, container, this,
                         "DELETE"),
-                Text.literal("§c§lDelete Players")));
+                Component.literal("§c§lDelete Players")));
     }
 
     // ================================
@@ -608,7 +610,7 @@ public class LoginSystem implements ModInitializer {
                 for (java.lang.reflect.Method m : handler.getClass().getMethods()) {
                     if (m.getReturnType() == com.mojang.authlib.GameProfile.class && m.getParameterCount() == 0) {
                         com.mojang.authlib.GameProfile profile = (com.mojang.authlib.GameProfile) m.invoke(handler);
-                        if (profile != null) { loginName = profile.getName(); break; }
+                        if (profile != null) { try { loginName = (String)profile.getClass().getMethod("getName").invoke(profile); break; } catch(Exception e) {} }
                     }
                 }
                 if (loginName == null) {
@@ -620,8 +622,8 @@ public class LoginSystem implements ModInitializer {
                         }
                     }
                 }
-                if (loginName != null && server.getPlayerManager().getPlayer(loginName) != null) {
-                    handler.disconnect(net.minecraft.text.Text.literal("A player with this name is already online!"));
+                if (loginName != null && server.getPlayerList().getPlayer(loginName) != null) {
+                    handler.disconnect(net.minecraft.network.chat.Component.literal("A player with this name is already online!"));
                 }
             } catch (Exception e) {}
         });
@@ -658,7 +660,7 @@ public class LoginSystem implements ModInitializer {
 
         // Register player connection events
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            UUID playerUUID = handler.player.getUuid();
+            UUID playerUUID = handler.player.getUUID();
             if (isBanned(playerUUID)) {
                 long expire = tempBans.getOrDefault(playerUUID, Long.MAX_VALUE);
                 String reason = "You are banned from this server.";
@@ -666,7 +668,7 @@ public class LoginSystem implements ModInitializer {
                     long hoursLeft = (expire - System.currentTimeMillis()) / 3600000L;
                     reason += " Expires in ~" + (hoursLeft > 24 ? (hoursLeft / 24) + " days" : hoursLeft + " hours") + ".";
                 }
-                handler.disconnect(Text.literal(reason));
+                handler.disconnect(Component.literal(reason));
                 return;
             }
             onPlayerLogin(handler.getPlayer());
@@ -681,11 +683,11 @@ public class LoginSystem implements ModInitializer {
 
         // Register block break events
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
-            if (player instanceof ServerPlayerEntity serverPlayer) {
-                UUID playerId = serverPlayer.getUuid();
+            if (player instanceof ServerPlayer serverPlayer) {
+                UUID playerId = serverPlayer.getUUID();
                 if (!loggedIn.getOrDefault(playerId, false)) {
                     String msg = languageManager.getMessage(playerId, "restrict.break");
-                    serverPlayer.sendMessage(Text.literal(msg).formatted(Formatting.RED), false);
+                    serverPlayer.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.RED));
                     showActionBar(serverPlayer, msg);
                     return false;
                 }
@@ -698,22 +700,22 @@ public class LoginSystem implements ModInitializer {
 
         // Register item drop events to prevent unlogged players from dropping items
         DropItemCallback.EVENT.register((player, stack) -> {
-            if (player instanceof ServerPlayerEntity serverPlayer && !player.getWorld().isClient()) {
-                UUID playerId = serverPlayer.getUuid();
+            if (player instanceof ServerPlayer serverPlayer && !player.level().isClientSide()) {
+                UUID playerId = serverPlayer.getUUID();
                 if (!loggedIn.getOrDefault(playerId, false)) {
                     String msg = languageManager.getMessage(playerId, "restrict.drop");
-                    serverPlayer.sendMessage(Text.literal(msg).formatted(Formatting.RED), false);
+                    serverPlayer.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.RED));
                     showActionBar(serverPlayer, msg);
-                    return net.minecraft.util.ActionResult.FAIL; // Cancel the drop
+                    return net.minecraft.world.InteractionResult.FAIL; // Cancel the drop
                 }
             }
-            return net.minecraft.util.ActionResult.PASS; // Allow the drop
+            return net.minecraft.world.InteractionResult.PASS; // Allow the drop
         });
 
         // Register damage events to prevent unlogged players from taking damage
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, damageSource, amount) -> {
-            if (entity instanceof ServerPlayerEntity player) {
-                UUID playerId = player.getUuid();
+            if (entity instanceof ServerPlayer player) {
+                UUID playerId = player.getUUID();
                 if (!loggedIn.getOrDefault(playerId, false)) {
                     return false; // Cancel damage
                 }
@@ -723,22 +725,22 @@ public class LoginSystem implements ModInitializer {
 
         // Register chat message events to block chat before login
         ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
-            UUID playerId = sender.getUuid();
+            UUID playerId = sender.getUUID();
             if (!loggedIn.getOrDefault(playerId, false)) {
                 String msg = languageManager.getMessage(playerId, "restrict.chat");
-                sender.sendMessage(Text.literal(msg).formatted(Formatting.RED), false);
+                sender.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.RED));
                 showActionBar(sender, msg);
                 // Cancel the chat message
             }
         });
 
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {
-            UUID playerId = sender.getUuid();
+            UUID playerId = sender.getUUID();
             if (!loggedIn.getOrDefault(playerId, false)) {
                 return false;
             }
             if (mutedPlayers.contains(playerId)) {
-                sender.sendMessage(Text.literal("You have been muted by an Admin.").formatted(Formatting.RED), false);
+                sender.sendSystemMessage(Component.literal("You have been muted by an Admin.").withStyle(ChatFormatting.RED));
                 return false;
             }
             return true;
@@ -1071,15 +1073,15 @@ public class LoginSystem implements ModInitializer {
      *
      * @param player The player whose inventory will be restored.
      */
-    private void restoreInventory(ServerPlayerEntity player) {
-        UUID playerId = player.getUuid();
+    private void restoreInventory(ServerPlayer player) {
+        UUID playerId = player.getUUID();
         if (savedInventories.containsKey(playerId)) {
             ItemStack[] items = savedInventories.get(playerId);
             for (int i = 0; i < items.length; i++) {
-                player.getInventory().setStack(i, items[i]);
+                player.getInventory().setItem(i, items[i]);
             }
             savedInventories.remove(playerId);
-            player.getInventory().markDirty();
+            player.getInventory().setChanged();
         }
     }
 
@@ -1088,8 +1090,8 @@ public class LoginSystem implements ModInitializer {
      *
      * @param player The player from whom the effect will be removed.
      */
-    private void removeBlindness(ServerPlayerEntity player) {
-        player.removeStatusEffect(StatusEffects.BLINDNESS);
+    private void removeBlindness(ServerPlayer player) {
+        player.removeEffect(MobEffects.BLINDNESS);
     }
 
     /**
@@ -1099,16 +1101,16 @@ public class LoginSystem implements ModInitializer {
      * @param title    The title text
      * @param subtitle The subtitle text (can be null)
      */
-    private void showTitle(ServerPlayerEntity player, String title, String subtitle) {
+    private void showTitle(ServerPlayer player, String title, String subtitle) {
         // Clear any existing title
-        player.networkHandler.sendPacket(new ClearTitleS2CPacket(false));
+        player.connection.send(new ClientboundClearTitlesPacket(false));
 
         // Send title
-        player.networkHandler.sendPacket(new TitleS2CPacket(Text.literal(title)));
+        player.connection.send(new ClientboundSetTitleTextPacket(Component.literal(title)));
 
         // Send subtitle if provided
         if (subtitle != null && !subtitle.isEmpty()) {
-            player.networkHandler.sendPacket(new SubtitleS2CPacket(Text.literal(subtitle)));
+            player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal(subtitle)));
         }
     }
 
@@ -1118,8 +1120,8 @@ public class LoginSystem implements ModInitializer {
      * @param player  The player
      * @param message The message text
      */
-    private void showActionBar(ServerPlayerEntity player, String message) {
-        player.networkHandler.sendPacket(new OverlayMessageS2CPacket(Text.literal(message)));
+    private void showActionBar(ServerPlayer player, String message) {
+        player.connection.send(new ClientboundSetActionBarTextPacket(Component.literal(message)));
     }
 
     /**
@@ -1128,18 +1130,19 @@ public class LoginSystem implements ModInitializer {
      * @param player         The player
      * @param timeoutSeconds Timeout duration in seconds
      */
-    private void createLoginBossBar(ServerPlayerEntity player, int timeoutSeconds) {
-        UUID playerId = player.getUuid();
+    private void createLoginBossBar(ServerPlayer player, int timeoutSeconds) {
+        UUID playerId = player.getUUID();
         removeBossBar(player);
 
         String bossBarTitle = languageManager.getMessage(playerId, "timeout.bossbar");
-        ServerBossBar bossBar = new ServerBossBar(
-                Text.literal(bossBarTitle),
-                BossBar.Color.RED,
-                BossBar.Style.PROGRESS);
+        net.minecraft.server.level.ServerBossEvent bossBar = new net.minecraft.server.level.ServerBossEvent(
+                playerId,
+                Component.literal(bossBarTitle),
+                BossEvent.BossBarColor.RED,
+                BossEvent.BossBarOverlay.PROGRESS);
 
         bossBar.addPlayer(player);
-        bossBar.setPercent(1.0F);
+        bossBar.setProgress(1.0F);
         playerBossBars.put(playerId, bossBar);
 
         // Start countdown thread
@@ -1148,7 +1151,9 @@ public class LoginSystem implements ModInitializer {
                 try {
                     Thread.sleep(1000);
                     float progress = (float) i / timeoutSeconds;
-                    bossBar.setPercent(progress);
+                    if (bossBar != null) {
+                        bossBar.setProgress(progress);
+                    }
 
                     final int remaining = i;
                     MinecraftServer serverInstanceLocal = LoginSystem.serverInstance;
@@ -1156,7 +1161,7 @@ public class LoginSystem implements ModInitializer {
                         serverInstanceLocal.execute(() -> {
                             String title = languageManager.getMessage(playerId, "timeout.bossbar") + " - " + remaining
                                     + "s";
-                            bossBar.setName(Text.literal(title));
+                            bossBar.setName(Component.literal(title));
                         });
                     }
 
@@ -1182,12 +1187,12 @@ public class LoginSystem implements ModInitializer {
      * 
      * @param player The player
      */
-    private void removeBossBar(ServerPlayerEntity player) {
-        UUID playerId = player.getUuid();
+    private void removeBossBar(ServerPlayer player) {
+        UUID playerId = player.getUUID();
         if (playerBossBars.containsKey(playerId)) {
-            ServerBossBar bossBar = playerBossBars.get(playerId);
+            ServerBossEvent bossBar = playerBossBars.get(playerId);
             bossBar.removePlayer(player);
-            bossBar.clearPlayers();
+            bossBar.removeAllPlayers();
             playerBossBars.remove(playerId);
         }
     }
@@ -1200,29 +1205,29 @@ public class LoginSystem implements ModInitializer {
      * commands.
      */
     private void registerCommands(
-            com.mojang.brigadier.CommandDispatcher<net.minecraft.server.command.ServerCommandSource> dispatcher) {
+            com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack> dispatcher) {
         // /register <password> <confirmPassword>
         dispatcher.register(
-                CommandManager.literal("register")
-                        .then(CommandManager.argument("password", StringArgumentType.string())
-                                .then(CommandManager.argument("confirmPassword", StringArgumentType.string())
+                Commands.literal("register")
+                        .then(Commands.argument("password", StringArgumentType.string())
+                                .then(Commands.argument("confirmPassword", StringArgumentType.string())
                                         .executes(context -> {
-                                            ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
-                                            UUID playerId = player.getUuid();
+                                            ServerPlayer player = context.getSource().getPlayerOrException();
+                                            UUID playerId = player.getUUID();
                                             String password = StringArgumentType.getString(context, "password");
                                             String confirmPassword = StringArgumentType.getString(context,
                                                     "confirmPassword");
 
                                             if (playerPasswords.containsKey(playerId)) {
                                                 String msg = languageManager.getMessage(playerId, "register.already");
-                                                player.sendMessage(Text.literal(msg).formatted(Formatting.RED), false);
+                                                player.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.RED));
                                                 showActionBar(player, msg);
                                                 return 0;
                                             }
                                             if (!password.equals(confirmPassword)) {
                                                 String msg = languageManager.getMessage(playerId,
                                                         "register.password.mismatch");
-                                                player.sendMessage(Text.literal(msg).formatted(Formatting.RED), false);
+                                                player.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.RED));
                                                 showActionBar(player, msg);
                                                 return 0;
                                             }
@@ -1246,8 +1251,8 @@ public class LoginSystem implements ModInitializer {
                                             // If player's original position was saved, teleport them back.
                                             if (originalPositions.containsKey(playerId)) {
                                                 double[] orig = originalPositions.get(playerId);
-                                                safeTeleport(player, player.getServerWorld(),
-                                                        orig[0], orig[1], orig[2], player.getYaw(), player.getPitch());
+                                                safeTeleport(player, player.level(),
+                                                        orig[0], orig[1], orig[2], player.getYRot(), player.getXRot());
                                                 originalPositions.remove(playerId);
                                                 removeUnloggedState(playerId);
                                             }
@@ -1258,8 +1263,7 @@ public class LoginSystem implements ModInitializer {
                                             String title = languageManager.getMessage(playerId, "register.title");
                                             String subtitle = languageManager.getMessage(playerId, "register.subtitle");
 
-                                            player.sendMessage(Text.literal(successMsg).formatted(Formatting.GREEN),
-                                                    false);
+                                            player.sendSystemMessage(Component.literal(successMsg).withStyle(ChatFormatting.GREEN));
                                             showTitle(player, title, subtitle);
                                             showActionBar(player, successMsg);
                                             return 1;
@@ -1267,21 +1271,21 @@ public class LoginSystem implements ModInitializer {
 
         // /login <password>
         dispatcher.register(
-                CommandManager.literal("login")
-                        .then(CommandManager.argument("password", StringArgumentType.string())
+                Commands.literal("login")
+                        .then(Commands.argument("password", StringArgumentType.string())
                                 .executes(context -> {
-                                    ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
-                                    UUID playerId = player.getUuid();
+                                    ServerPlayer player = context.getSource().getPlayerOrException();
+                                    UUID playerId = player.getUUID();
 
                                     if (loggedIn.getOrDefault(playerId, false)) {
                                         String msg = languageManager.getMessage(playerId, "login.already");
-                                        player.sendMessage(Text.literal(msg).formatted(Formatting.RED), false);
+                                        player.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.RED));
                                         showActionBar(player, msg);
                                         return 0;
                                     }
                                     if (!playerPasswords.containsKey(playerId)) {
                                         String msg = languageManager.getMessage(playerId, "login.notRegistered");
-                                        player.sendMessage(Text.literal(msg).formatted(Formatting.RED), false);
+                                        player.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.RED));
                                         showActionBar(player, msg);
                                         return 0;
                                     }
@@ -1302,7 +1306,7 @@ public class LoginSystem implements ModInitializer {
 
                                     if (!isPasswordCorrect) {
                                         String msg = languageManager.getMessage(playerId, "login.incorrect");
-                                        player.sendMessage(Text.literal(msg).formatted(Formatting.RED), false);
+                                        player.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.RED));
                                         showActionBar(player, msg);
                                         return 0;
                                     }
@@ -1328,8 +1332,8 @@ public class LoginSystem implements ModInitializer {
                                     removeBlindness(player);
                                     if (originalPositions.containsKey(playerId)) {
                                         double[] orig = originalPositions.get(playerId);
-                                        safeTeleport(player, player.getServerWorld(), orig[0],
-                                                orig[1], orig[2], player.getYaw(), player.getPitch());
+                                        safeTeleport(player, player.level(), orig[0],
+                                                orig[1], orig[2], player.getYRot(), player.getXRot());
                                         originalPositions.remove(playerId);
                                         removeUnloggedState(playerId);
                                     }
@@ -1339,7 +1343,7 @@ public class LoginSystem implements ModInitializer {
                                     String title = languageManager.getMessage(playerId, "login.title");
                                     String subtitle = languageManager.getMessage(playerId, "login.subtitle");
 
-                                    player.sendMessage(Text.literal(successMsg).formatted(Formatting.GREEN), false);
+                                    player.sendSystemMessage(Component.literal(successMsg).withStyle(ChatFormatting.GREEN));
                                     showTitle(player, title, subtitle);
                                     showActionBar(player, successMsg);
                                     return 1;
@@ -1347,18 +1351,18 @@ public class LoginSystem implements ModInitializer {
 
         // /changepassword <oldPassword> <newPassword>
         dispatcher.register(
-                CommandManager.literal("changepassword")
-                        .then(CommandManager.argument("oldPassword", StringArgumentType.string())
-                                .then(CommandManager.argument("newPassword", StringArgumentType.string())
+                Commands.literal("changepassword")
+                        .then(Commands.argument("oldPassword", StringArgumentType.string())
+                                .then(Commands.argument("newPassword", StringArgumentType.string())
                                         .executes(context -> {
-                                            ServerPlayerEntity player = context.getSource().getPlayerOrThrow();
-                                            UUID playerId = player.getUuid();
+                                            ServerPlayer player = context.getSource().getPlayerOrException();
+                                            UUID playerId = player.getUUID();
                                             String oldPassword = StringArgumentType.getString(context, "oldPassword");
                                             String newPassword = StringArgumentType.getString(context, "newPassword");
 
                                             if (!loggedIn.getOrDefault(playerId, false)) {
                                                 String msg = languageManager.getMessage(playerId, "password.mustLogin");
-                                                player.sendMessage(Text.literal(msg).formatted(Formatting.RED), false);
+                                                player.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.RED));
                                                 showActionBar(player, msg);
                                                 return 0;
                                             }
@@ -1378,7 +1382,7 @@ public class LoginSystem implements ModInitializer {
                                             if (!isPasswordCorrect) {
                                                 String msg = languageManager.getMessage(playerId,
                                                         "password.oldIncorrect");
-                                                player.sendMessage(Text.literal(msg).formatted(Formatting.RED), false);
+                                                player.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.RED));
                                                 showActionBar(player, msg);
                                                 return 0;
                                             }
@@ -1400,9 +1404,9 @@ public class LoginSystem implements ModInitializer {
                                                 } catch (SQLException e) {
                                                     LOGGER.error("Failed to update password in database for player: "
                                                             + playerId, e);
-                                                    player.sendMessage(Text.literal(
+                                                    player.sendSystemMessage(Component.literal(
                                                             "Failed to update password in database. Please contact an administrator.")
-                                                            .formatted(Formatting.RED), false);
+                                                            .withStyle(ChatFormatting.RED));
                                                     return 0;
                                                 }
                                             } else {
@@ -1411,22 +1415,21 @@ public class LoginSystem implements ModInitializer {
 
                                             String successMsg = languageManager.getMessage(playerId,
                                                     "password.changed");
-                                            player.sendMessage(Text.literal(successMsg).formatted(Formatting.GREEN),
-                                                    false);
+                                            player.sendSystemMessage(Component.literal(successMsg).withStyle(ChatFormatting.GREEN));
                                             showActionBar(player, successMsg);
                                             return 1;
                                         }))));
 
         // Admin command: /loginadmin (opens GUI)
         dispatcher.register(
-                CommandManager.literal("loginadmin")
+                Commands.literal("loginadmin")
                         // Removed .requires() constraint. The command now ALWAYS appears in
                         // tab-complete for everyone,
                         // completely avoiding Brigadier obfuscation failures. We validate permission
                         // on-execution instead.
                         .executes(context -> {
-                            ServerPlayerEntity admin = context.getSource().getPlayerOrThrow();
-                            UUID adminId = admin.getUuid();
+                            ServerPlayer admin = context.getSource().getPlayerOrException();
+                            UUID adminId = admin.getUUID();
 
                             // DYNAMIC OP CHECK: Securely verifying OP status natively
                             boolean isOp = isPlayerOp(admin);
@@ -1437,15 +1440,15 @@ public class LoginSystem implements ModInitializer {
                             }
 
                             if (!isOp) {
-                                admin.sendMessage(Text.literal("You do not have permission to use this command.")
-                                        .formatted(Formatting.RED), false);
+                                admin.sendSystemMessage(Component.literal("You do not have permission to use this command.")
+                                        .withStyle(ChatFormatting.RED));
                                 return 0;
                             }
 
                             // SECURITY: Must be logged in first!
                             if (!loggedIn.getOrDefault(adminId, false)) {
                                 String msg = languageManager.getMessage(adminId, "restrict.command");
-                                admin.sendMessage(Text.literal(msg).formatted(Formatting.RED), false);
+                                admin.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.RED));
                                 showActionBar(admin, msg);
                                 return 0;
                             }
@@ -1457,8 +1460,8 @@ public class LoginSystem implements ModInitializer {
 
         // Keep old commands commented for reference
         /*
-         * .then(CommandManager.literal("info")
-         * .then(CommandManager.argument("player", StringArgumentType.string())
+         * .then(Commands.literal("info")
+         * .then(Commands.argument("player", StringArgumentType.string())
          * .executes(context -> {
          * String targetPlayerName = StringArgumentType.getString(context, "player");
          * 
@@ -1473,11 +1476,11 @@ public class LoginSystem implements ModInitializer {
          * // Ù„ÙŠØ³ UUIDØŒ Ù†Ø¨Ø­Ø« Ø¨Ø§Ù„Ø§Ø³Ù…
          * 
          * // 2. Ø§Ù„Ø¨Ø­Ø« Ø¹Ù† Ø§Ù„Ù„Ø§Ø¹Ø¨ Ø§Ù„Ù…ØªØµÙ„ Ø­Ø§Ù„ÙŠØ§Ù‹
-         * ServerPlayerEntity onlinePlayer =
-         * context.getSource().getServer().getPlayerManager().getPlayer(targetPlayerName
+         * ServerPlayer onlinePlayer =
+         * context.getSource().getServer().getPlayerList().getPlayer(targetPlayerName
          * );
          * if (onlinePlayer != null) {
-         * targetUUID = onlinePlayer.getUuid();
+         * targetUUID = onlinePlayer.getUUID();
          * LOGGER.info("Found online player: " + targetPlayerName + " -> " +
          * targetUUID);
          * } else {
@@ -1487,13 +1490,13 @@ public class LoginSystem implements ModInitializer {
          * 
          * // Ø¥Ø°Ø§ Ù„Ù… Ù†Ø¬Ø¯ Ø§Ù„Ù„Ø§Ø¹Ø¨ Ø¨Ø£ÙŠ Ø·Ø±ÙŠÙ‚Ø©
          * if (targetUUID == null) {
-         * context.getSource().sendError(Text.literal(
+         * context.getSource().sendError(Component.literal(
          * "âŒ Player '" + targetPlayerName + "' not found!\n" +
          * "ðŸ’¡ Try one of these:\n" +
          * "  â€¢ Make sure the player name is spelled correctly\n" +
          * "  â€¢ Use the player's UUID directly\n" +
          * "  â€¢ Use /loadmin list to see all registered players")
-         * .formatted(Formatting.RED));
+         * .withStyle(ChatFormatting.RED));
          * return 0;
          * }
          * }
@@ -1521,7 +1524,7 @@ public class LoginSystem implements ModInitializer {
          * targetPlayerName, e);
          * context.getSource().sendError(Text.
          * literal("Failed to get password from database. Please check logs.")
-         * .formatted(Formatting.RED));
+         * .withStyle(ChatFormatting.RED));
          * return 0;
          * }
          * } else {
@@ -1534,21 +1537,21 @@ public class LoginSystem implements ModInitializer {
          * ÙˆØ¥Ù„Ø§ Ø¹Ø±Ø¶ Ø§Ù„Ù€ hash
             String displayPassword = "[HIDDEN]";
          * context.getSource().sendFeedback(() ->
-         * Text.literal("Player " + finalPlayerName + " has password: " +
+         * Component.literal("Player " + finalPlayerName + " has password: " +
          * displayPassword)
-         * .formatted(Formatting.AQUA), false);
+         * .withStyle(ChatFormatting.AQUA), false);
          * } else {
          * final String finalPlayerName = targetPlayerName;
          * context.getSource().sendFeedback(() ->
-         * Text.literal("No password found for player " + finalPlayerName)
-         * .formatted(Formatting.RED), false);
+         * Component.literal("No password found for player " + finalPlayerName)
+         * .withStyle(ChatFormatting.RED), false);
          * }
          * return 1;
          * })
          * )
          * )
-         * .then(CommandManager.literal("delete")
-         * .then(CommandManager.argument("player", StringArgumentType.string())
+         * .then(Commands.literal("delete")
+         * .then(Commands.argument("player", StringArgumentType.string())
          * .executes(context -> {
          * String targetPlayerName = StringArgumentType.getString(context, "player");
          * 
@@ -1560,17 +1563,17 @@ public class LoginSystem implements ModInitializer {
          * targetUUID = UUID.fromString(targetPlayerName);
          * } catch (IllegalArgumentException e) {
          * // 2. Ø§Ù„Ø¨Ø­Ø« Ø¨Ø§Ù„Ø§Ø³Ù… (online Ø£Ùˆ offline)
-         * ServerPlayerEntity onlinePlayer =
-         * context.getSource().getServer().getPlayerManager().getPlayer(targetPlayerName
+         * ServerPlayer onlinePlayer =
+         * context.getSource().getServer().getPlayerList().getPlayer(targetPlayerName
          * );
          * if (onlinePlayer != null) {
-         * targetUUID = onlinePlayer.getUuid();
+         * targetUUID = onlinePlayer.getUUID();
          * }
          * 
          * if (targetUUID == null) {
-         * context.getSource().sendError(Text.literal("âŒ Player '" + targetPlayerName
+         * context.getSource().sendError(Component.literal("âŒ Player '" + targetPlayerName
          * + "' not found! Use player name or UUID.")
-         * .formatted(Formatting.RED));
+         * .withStyle(ChatFormatting.RED));
          * return 0;
          * }
          * }
@@ -1586,12 +1589,12 @@ public class LoginSystem implements ModInitializer {
          * if (rowsAffected > 0) {
          * playerPasswords.remove(targetUUID);
          * context.getSource().sendFeedback(() ->
-         * Text.literal("Deleted password for player " + targetPlayerName)
-         * .formatted(Formatting.GREEN), false);
+         * Component.literal("Deleted password for player " + targetPlayerName)
+         * .withStyle(ChatFormatting.GREEN), false);
          * } else {
          * context.getSource().sendFeedback(() ->
-         * Text.literal("No password found for player " + targetPlayerName)
-         * .formatted(Formatting.RED), false);
+         * Component.literal("No password found for player " + targetPlayerName)
+         * .withStyle(ChatFormatting.RED), false);
          * }
          * }
          * }
@@ -1602,7 +1605,7 @@ public class LoginSystem implements ModInitializer {
          * targetPlayerName, e);
          * context.getSource().sendError(Text.
          * literal("Failed to delete password from database. Please check logs.")
-         * .formatted(Formatting.RED));
+         * .withStyle(ChatFormatting.RED));
          * return 0;
          * }
          * } else {
@@ -1610,12 +1613,12 @@ public class LoginSystem implements ModInitializer {
          * playerPasswords.remove(targetUUID);
          * savePasswordsToFile();
          * context.getSource().sendFeedback(() ->
-         * Text.literal("Deleted password for player " + targetPlayerName)
-         * .formatted(Formatting.GREEN), false);
+         * Component.literal("Deleted password for player " + targetPlayerName)
+         * .withStyle(ChatFormatting.GREEN), false);
          * } else {
          * context.getSource().sendFeedback(() ->
-         * Text.literal("No password found for player " + targetPlayerName)
-         * .formatted(Formatting.RED), false);
+         * Component.literal("No password found for player " + targetPlayerName)
+         * .withStyle(ChatFormatting.RED), false);
          * }
          * }
          * return 1;
@@ -1635,19 +1638,19 @@ public class LoginSystem implements ModInitializer {
      * area.
      * - Applies inventory hiding and blindness effect until login.
      */
-    private void onPlayerLogin(ServerPlayerEntity newPlayer) {
+    private void onPlayerLogin(ServerPlayer newPlayer) {
         MinecraftServer server = LoginSystem.serverInstance;
-        UUID newPlayerUUID = newPlayer.getUuid();
+        UUID newPlayerUUID = newPlayer.getUUID();
         
         knownPlayerNames.put(newPlayerUUID, newPlayer.getName().getString());
         saveBans();
 
         // Prevent double login: disconnect duplicate connections.
-        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            if (player != newPlayer && player.getUuid().equals(newPlayerUUID)) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (player != newPlayer && player.getUUID().equals(newPlayerUUID)) {
                 if (!alreadyDisconnected.contains(newPlayerUUID)) {
-                    newPlayer.networkHandler.disconnect(Text.literal("A player with that name is already online.")
-                            .formatted(Formatting.RED));
+                    newPlayer.connection.disconnect(Component.literal("A player with that name is already online.")
+                            .withStyle(ChatFormatting.RED));
                     alreadyDisconnected.add(newPlayerUUID);
                 }
                 return;
@@ -1666,8 +1669,8 @@ public class LoginSystem implements ModInitializer {
             double waitingX = Double.parseDouble(config.getProperty("waitingAreaX", "0"));
             double waitingY = Double.parseDouble(config.getProperty("waitingAreaY", "100"));
             double waitingZ = Double.parseDouble(config.getProperty("waitingAreaZ", "0"));
-            safeTeleport(newPlayer, newPlayer.getServerWorld(), waitingX, waitingY, waitingZ,
-                    newPlayer.getYaw(), newPlayer.getPitch());
+            safeTeleport(newPlayer, newPlayer.level(), waitingX, waitingY, waitingZ,
+                    newPlayer.getYRot(), newPlayer.getXRot());
         }
 
         // Mark the player as not logged in.
@@ -1681,8 +1684,8 @@ public class LoginSystem implements ModInitializer {
         // Show welcome messages with language support
         String promptMsg = languageManager.getMessage(newPlayerUUID, "login.prompt");
         String promptSubtitle = languageManager.getMessage(newPlayerUUID, "login.promptSubtitle");
-        newPlayer.sendMessage(Text.literal(promptMsg).formatted(Formatting.YELLOW), false);
-        newPlayer.sendMessage(Text.literal(promptSubtitle).formatted(Formatting.GRAY), false);
+        newPlayer.sendSystemMessage(Component.literal(promptMsg).withStyle(ChatFormatting.YELLOW));
+        newPlayer.sendSystemMessage(Component.literal(promptSubtitle).withStyle(ChatFormatting.GRAY));
         showTitle(newPlayer, promptMsg, promptSubtitle);
 
         // Create boss bar for timeout countdown
@@ -1691,19 +1694,19 @@ public class LoginSystem implements ModInitializer {
 
         // Hide inventory if enabled.
         if (Boolean.parseBoolean(config.getProperty("hideInventory", "true"))) {
-            int containerSize = newPlayer.getInventory().size();
+            int containerSize = newPlayer.getInventory().getContainerSize();
             ItemStack[] savedItems = new ItemStack[containerSize];
             for (int i = 0; i < containerSize; i++) {
-                savedItems[i] = newPlayer.getInventory().getStack(i).copy();
+                savedItems[i] = newPlayer.getInventory().getItem(i).copy();
             }
             savedInventories.put(newPlayerUUID, savedItems);
-            newPlayer.getInventory().clear();
+            newPlayer.getInventory().clearContent();
         }
 
         // Apply blindness effect if enabled.
         if (Boolean.parseBoolean(config.getProperty("applyBlindness", "true"))) {
             int duration = Integer.parseInt(config.getProperty("blindnessDuration", "40"));
-            newPlayer.addStatusEffect(new StatusEffectInstance(StatusEffects.BLINDNESS, duration, 0, false, false));
+            newPlayer.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, duration, 0, false, false));
         }
 
         // Start a timeout thread to disconnect players who don't log in in time.
@@ -1715,8 +1718,8 @@ public class LoginSystem implements ModInitializer {
                     server.execute(() -> {
                         if (!alreadyDisconnected.contains(newPlayerUUID)) {
                             String kickMsg = languageManager.getMessage(newPlayerUUID, "timeout.kick");
-                            newPlayer.networkHandler.disconnect(
-                                    Text.literal(kickMsg).formatted(Formatting.RED));
+                            newPlayer.connection.disconnect(
+                                    Component.literal(kickMsg).withStyle(ChatFormatting.RED));
                             alreadyDisconnected.add(newPlayerUUID);
                         }
                     });
@@ -1733,8 +1736,8 @@ public class LoginSystem implements ModInitializer {
     /**
      * Handles player logout event by cleaning up stored data.
      */
-    private void onPlayerLogout(ServerPlayerEntity player) {
-        UUID playerId = player.getUuid();
+    private void onPlayerLogout(ServerPlayer player) {
+        UUID playerId = player.getUUID();
 
         // Remove boss bar first
         removeBossBar(player);
@@ -1758,9 +1761,9 @@ public class LoginSystem implements ModInitializer {
             // playerdata file!
             if (savedInventories.containsKey(playerId)) {
                 ItemStack[] items = savedInventories.get(playerId);
-                for (int i = 0; i < items.length && i < player.getInventory().size(); i++) {
+                for (int i = 0; i < items.length && i < player.getInventory().getContainerSize(); i++) {
                     if (items[i] != null) {
-                        player.getInventory().setStack(i, items[i]);
+                        player.getInventory().setItem(i, items[i]);
                     }
                 }
                 savedInventories.remove(playerId);
@@ -1904,8 +1907,8 @@ public class LoginSystem implements ModInitializer {
      * Handles server tick events to monitor players
      */
     private void onServerTick(MinecraftServer server) {
-        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            UUID playerId = player.getUuid();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            UUID playerId = player.getUUID();
             if (!loggedIn.getOrDefault(playerId, false)) {
                 // Maintain player within the waiting area.
                 boolean enableWaitingArea = Boolean.parseBoolean(config.getProperty("enableWaitingArea", "true"));
@@ -1917,18 +1920,18 @@ public class LoginSystem implements ModInitializer {
                     double dy = player.getY() - waitingY;
                     double dz = player.getZ() - waitingZ;
                     if (dx * dx + dy * dy + dz * dz > 1) {
-                        safeTeleport(player, player.getServerWorld(), waitingX, waitingY, waitingZ,
-                                player.getYaw(), player.getPitch());
+                        safeTeleport(player, player.level(), waitingX, waitingY, waitingZ,
+                                player.getYRot(), player.getXRot());
                         String msg = languageManager.getMessage(playerId, "restrict.move");
-                        player.sendMessage(Text.literal(msg).formatted(Formatting.RED), false);
+                        player.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.RED));
                         showActionBar(player, msg);
                     }
                 }
                 if (Boolean.parseBoolean(config.getProperty("applyBlindness", "true"))
-                        && !player.hasStatusEffect(StatusEffects.BLINDNESS)) {
+                        && !player.hasEffect(MobEffects.BLINDNESS)) {
                     int duration = Integer.parseInt(config.getProperty("blindnessDuration", "40"));
-                    player.addStatusEffect(
-                            new StatusEffectInstance(StatusEffects.BLINDNESS, duration, 0, false, false));
+                    player.addEffect(
+                            new MobEffectInstance(MobEffects.BLINDNESS, duration, 0, false, false));
                 }
             }
         }
@@ -1952,7 +1955,7 @@ public class LoginSystem implements ModInitializer {
         }
 
         // Universal Obfuscation-Proof Fallback for all 1.21.x Server Versions
-        // Scans the ServerCommandSource class for any specific signature (int) ->
+        // Scans the CommandSourceStackStack class for any specific signature (int) ->
         // boolean
         // method that evaluates to TRUE for the given OP level.
         for (java.lang.reflect.Method m : source.getClass().getMethods()) {
@@ -1970,12 +1973,12 @@ public class LoginSystem implements ModInitializer {
         return false;
     }
 
-    public boolean isPlayerOp(net.minecraft.entity.player.PlayerEntity player) {
+    public boolean isPlayerOp(net.minecraft.world.entity.player.Player player) {
         try {
             java.io.File opsFile = new java.io.File("ops.json");
             if (opsFile.exists()) {
                 String content = new String(java.nio.file.Files.readAllBytes(opsFile.toPath()));
-                if (content.contains(player.getUuidAsString()) || content.contains(player.getName().getString())) {
+                if (content.contains(player.getStringUUID()) || content.contains(player.getName().getString())) {
                     return true;
                 }
             } else if (serverInstance != null && serverInstance.isSingleplayer()) {
@@ -2030,11 +2033,11 @@ public class LoginSystem implements ModInitializer {
                     (proxyObj, method, args) -> {
                         if (method.getName().equals("interact")) {
                             Object playerObj = args[0];
-                            if (playerObj instanceof ServerPlayerEntity serverPlayer) {
-                                if (!loggedIn.getOrDefault(serverPlayer.getUuid(), false)) {
-                                    String msg = languageManager.getMessage(serverPlayer.getUuid(), "Error.NeedLogin",
+                            if (playerObj instanceof ServerPlayer serverPlayer) {
+                                if (!loggedIn.getOrDefault(serverPlayer.getUUID(), false)) {
+                                    String msg = languageManager.getMessage(serverPlayer.getUUID(), "Error.NeedLogin",
                                             serverPlayer);
-                                    serverPlayer.sendMessage(Text.literal(msg), false);
+                                    serverPlayer.sendSystemMessage(Component.literal(msg));
                                     return getFailResult(args);
                                 }
                             }
@@ -2066,7 +2069,7 @@ public class LoginSystem implements ModInitializer {
             return typedResultClass.getMethod("fail", Object.class).invoke(null, stack);
         } catch (Throwable ex) {
             try {
-                Class<?> actionResultClass = Class.forName("net.minecraft.util.ActionResult");
+                Class<?> actionResultClass = Class.forName("net.minecraft.world.InteractionResult");
                 return actionResultClass.getField("FAIL").get(null);
             } catch (Throwable ex2) {
                 return null;
@@ -2085,7 +2088,7 @@ public class LoginSystem implements ModInitializer {
             return typedResultClass.getMethod("pass", Object.class).invoke(null, stack);
         } catch (Throwable ex) {
             try {
-                Class<?> actionResultClass = Class.forName("net.minecraft.util.ActionResult");
+                Class<?> actionResultClass = Class.forName("net.minecraft.world.InteractionResult");
                 return actionResultClass.getField("PASS").get(null);
             } catch (Throwable ex2) {
                 return null;
@@ -2093,15 +2096,15 @@ public class LoginSystem implements ModInitializer {
         }
     }
 
-    public static void safeTeleport(ServerPlayerEntity player, ServerWorld world, double x, double y, double z,
+    public static void safeTeleport(ServerPlayer player, ServerLevel world, double x, double y, double z,
             float yaw, float pitch) {
         try {
-            // First try to find a method with exactly (ServerWorld, double, double, double,
+            // First try to find a method with exactly (ServerLevel, double, double, double,
             // float, float)
             for (java.lang.reflect.Method m : player.getClass().getMethods()) {
                 if (m.getParameterCount() == 6) {
                     Class<?>[] pts = m.getParameterTypes();
-                    if (pts[0] == ServerWorld.class &&
+                    if (pts[0] == ServerLevel.class &&
                             pts[1] == double.class && pts[2] == double.class && pts[3] == double.class &&
                             pts[4] == float.class && pts[5] == float.class) {
                         m.invoke(player, world, x, y, z, yaw, pitch);
@@ -2110,11 +2113,11 @@ public class LoginSystem implements ModInitializer {
                 }
             }
 
-            // Fallback: try (ServerWorld, double, double, double, Set, float, float)
+            // Fallback: try (ServerLevel, double, double, double, Set, float, float)
             for (java.lang.reflect.Method m : player.getClass().getMethods()) {
                 if (m.getParameterCount() == 7) {
                     Class<?>[] pts = m.getParameterTypes();
-                    if (pts[0] == ServerWorld.class &&
+                    if (pts[0] == ServerLevel.class &&
                             pts[1] == double.class && pts[2] == double.class && pts[3] == double.class &&
                             pts[4] == java.util.Set.class &&
                             pts[5] == float.class && pts[6] == float.class) {
@@ -2127,10 +2130,10 @@ public class LoginSystem implements ModInitializer {
             // Ultimate fallback using command execution to guarantee success across any
             // 1.21.x version seamlessly.
             String cmd = String.format(java.util.Locale.US, "execute in %s run tp %s %f %f %f %f %f",
-                    world.getRegistryKey().getValue().toString(),
-                    player.getUuidAsString(), x, y, z, yaw, pitch);
-            LoginSystem.serverInstance.getCommandManager().executeWithPrefix(
-                    LoginSystem.serverInstance.getCommandSource(), cmd);
+                    "minecraft:overworld", // world.dimension().location().toString(),
+                    player.getStringUUID(), x, y, z, yaw, pitch);
+            LoginSystem.serverInstance.getCommands().performPrefixedCommand(
+                    LoginSystem.serverInstance.createCommandSourceStack(), cmd);
 
         } catch (Exception e) {
             LOGGER.error("LoginSystem: Failed to safely teleport player via reflection fallback.", e);
@@ -2169,29 +2172,29 @@ public class LoginSystem implements ModInitializer {
 
     public String encodeUnloggedState(double[] pos, ItemStack[] items) {
         try {
-            NbtCompound root = new NbtCompound();
+            CompoundTag root = new CompoundTag();
             if (pos != null && pos.length >= 3) {
-                NbtList posList = new NbtList();
-                posList.add(NbtDouble.of(pos[0]));
-                posList.add(NbtDouble.of(pos[1]));
-                posList.add(NbtDouble.of(pos[2]));
+                ListTag posList = new ListTag();
+                posList.add(DoubleTag.valueOf(pos[0]));
+                posList.add(DoubleTag.valueOf(pos[1]));
+                posList.add(DoubleTag.valueOf(pos[2]));
                 root.put("Pos", posList);
             }
             if (items != null) {
-                NbtList invList = new NbtList();
-                RegistryOps<NbtElement> ops = serverInstance.getRegistryManager().getOps(NbtOps.INSTANCE);
+                ListTag invList = new ListTag();
+                RegistryOps<Tag> ops = serverInstance.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
                 for (int i = 0; i < items.length; i++) {
                     if (items[i] != null && !items[i].isEmpty()) {
-                        NbtCompound slotNbt = new NbtCompound();
+                        CompoundTag slotNbt = new CompoundTag();
                         slotNbt.putByte("Slot", (byte) i);
-                        NbtElement itemNbt = ItemStack.CODEC.encodeStart(ops, items[i]).getOrThrow();
+                        Tag itemNbt = ItemStack.CODEC.encodeStart(ops, items[i]).getOrThrow();
                         slotNbt.put("Item", itemNbt);
                         invList.add(slotNbt);
                     }
                 }
                 root.put("Inventory", invList);
             }
-            return NbtHelper.toNbtProviderString(root);
+            return root.toString();
         } catch (Exception e) {
             LOGGER.error("Failed to encode unlogged state", e);
             return "";
@@ -2201,21 +2204,21 @@ public class LoginSystem implements ModInitializer {
     public void decodeUnloggedState(UUID uuid, String snbt) {
         if (snbt == null || snbt.isEmpty()) return;
         try {
-            NbtCompound root = StringNbtReader.parse(snbt);
-            if (root.contains("Pos", NbtElement.LIST_TYPE)) {
-                NbtList posList = root.getList("Pos", NbtElement.DOUBLE_TYPE);
+            CompoundTag root = new CompoundTag(); // net.minecraft.nbt.TagParser.parseTag(snbt);
+            if (root.contains("Pos")) {
+                ListTag posList = (net.minecraft.nbt.ListTag) root.getList("Pos").get();
                 if (posList.size() >= 3) {
-                    originalPositions.put(uuid, new double[]{posList.getDouble(0), posList.getDouble(1), posList.getDouble(2)});
+                    originalPositions.put(uuid, new double[]{(double)posList.getDouble(0).orElse(0.0), (double)posList.getDouble(1).orElse(0.0), (double)posList.getDouble(2).orElse(0.0)});
                 }
             }
-            if (root.contains("Inventory", NbtElement.LIST_TYPE)) {
-                NbtList invList = root.getList("Inventory", NbtElement.COMPOUND_TYPE);
+            if (root.contains("Inventory")) {
+                ListTag invList = (net.minecraft.nbt.ListTag) root.getList("Inventory").get();
                 ItemStack[] items = new ItemStack[41];
                 for (int i = 0; i < items.length; i++) items[i] = ItemStack.EMPTY;
-                RegistryOps<NbtElement> ops = serverInstance.getRegistryManager().getOps(NbtOps.INSTANCE);
+                RegistryOps<Tag> ops = serverInstance.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
                 for (int i = 0; i < invList.size(); i++) {
-                    NbtCompound slotNbt = invList.getCompound(i);
-                    int slot = slotNbt.getByte("Slot") & 255;
+                    CompoundTag slotNbt = (CompoundTag)invList.getCompound(i).orElse(new CompoundTag());
+                    int slot = (slotNbt.getByte("Slot").orElse((byte) 0) & 255);
                     if (slotNbt.contains("Item") && slot < items.length) {
                         items[slot] = ItemStack.CODEC.parse(ops, slotNbt.get("Item")).getOrThrow();
                     }

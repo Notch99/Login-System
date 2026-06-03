@@ -3,7 +3,7 @@
   "id": "loginsystem",
   "version": "${version}",
   "name": "Login System",
-  "description": "A server-side login system mod for Minecraft Fabric servers (1.21-1.21.11) with database support.",
+  "description": "A server-side login system mod for Minecraft Fabric servers (26.1+) with database support.",
   "authors": [
     "Notch"
   ],
@@ -22,8 +22,8 @@
   "mixins": [],
   "depends": {
     "fabricloader": ">=${loader_version}",
-    "minecraft": ">=1.21 <=1.21.11",
-    "java": ">=21"
+    "minecraft": ">=26.1",
+    "java": ">=25"
   },
   "suggests": {
     "fabric-api": "*"

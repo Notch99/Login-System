@@ -30,7 +30,7 @@ public class FixEncoding {
                          .replace("Â§", "§"); // Section sign
                          
         // Fix any weird whitespace left behind from emoji removal
-        content = content.replace("Text.literal(\" ", "Text.literal(\"");
+        content = content.replace("Component.literal(\" ", "Component.literal(\"");
         content = content.replace("LOGGER.info(\" ", "LOGGER.info(\"");
         content = content.replace("LOGGER.warn(\" ", "LOGGER.warn(\"");
         content = content.replace("LOGGER.error(\" ", "LOGGER.error(\"");

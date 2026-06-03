@@ -1,4 +1,4 @@
-# 🔐 Login System Mod v2.1.0 - Fabric Edition
+# 🔐 Login System Mod v3.0 - Fabric Edition
 
 A comprehensive authentication system for Minecraft Fabric servers that requires players to register and login before they can interact with the game world.
 
@@ -33,10 +33,10 @@ A comprehensive authentication system for Minecraft Fabric servers that requires
   - *Note: Passwords are no longer visible to admins for security, but can be securely resettled.*
 
 ## 📋 System Requirements
-- **Minecraft**: 1.21.x
-- **Fabric Loader**: Compatible with latest 1.21.x loaders
+- **Minecraft**: 26.1 and above
+- **Fabric Loader**: Compatible with 26.1+ loaders
 - **Fabric API**: Required
-- **Java**: 17 or higher
+- **Java**: 25 or higher
 - **Server Side Only**: No client installation required
 
 ## 🚀 Installation & Setup

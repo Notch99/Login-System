@@ -1,12 +1,12 @@
 plugins {
-    id 'fabric-loom' version '1.3.8'
+    id 'net.fabricmc.fabric-loom' version '1.15.5'
     id 'maven-publish'
 }
 
-// Use Java 21 toolchain (will download automatically if not installed)
+// Use Java 25 toolchain (will download automatically if not installed)
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
@@ -27,9 +27,8 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     
     // MySQL JDBC Driver - embedded in final JAR
     implementation 'mysql:mysql-connector-java:8.0.33'
@@ -56,14 +55,14 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = "UTF-8"
-    it.options.release = 21
+    it.options.release = 25
 }
 
 java {
     withSourcesJar()
 
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 jar {
@@ -118,5 +117,11 @@ publishing {
         mavenJava(MavenPublication) {
             from components.java
         }
+    }
+}
+
+task printConfigs {
+    doLast {
+        project.plugins.each { println it.class.name }
     }
 }

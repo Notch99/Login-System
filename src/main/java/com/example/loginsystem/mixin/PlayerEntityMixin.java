@@ -1,25 +1,25 @@
 package com.example.loginsystem.mixin;
 
 import com.example.loginsystem.callback.DropItemCallback;
-import net.minecraft.entity.ItemEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ActionResult;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.InteractionResult;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(PlayerEntity.class)
+@Mixin(Player.class)
 public class PlayerEntityMixin {
 
-    @Inject(method = "dropItem(Lnet/minecraft/item/ItemStack;ZZ)Lnet/minecraft/entity/ItemEntity;", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "dropItem(Lnet.minecraft.world.item.ItemStack;ZZ)Lnet.minecraft.world.entity.item.ItemEntity;", at = @At("HEAD"), cancellable = true)
     private void onDropItem(ItemStack stack, boolean throwRandomly, boolean retainOwnership, CallbackInfoReturnable<ItemEntity> cir) {
-        PlayerEntity player = (PlayerEntity) (Object) this;
+        Player player = (Player) (Object) this;
         
-        ActionResult result = DropItemCallback.EVENT.invoker().interact(player, stack);
+        InteractionResult result = DropItemCallback.EVENT.invoker().interact(player, stack);
         
-        if (result == ActionResult.FAIL) {
+        if (result == InteractionResult.FAIL) {
             // Cancel the drop and return null (item stays in inventory)
             cir.setReturnValue(null);
         }
