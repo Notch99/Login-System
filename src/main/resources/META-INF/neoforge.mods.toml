@@ -12,14 +12,14 @@ authors="Notch, LoginSystem Team"
 [[dependencies.loginsystem]]
 modId="neoforge"
 type="required"
-versionRange="[21,)"
+versionRange="[26,)"
 ordering="NONE"
 side="SERVER"
 
 [[dependencies.loginsystem]]
 modId="minecraft"
 type="required"
-versionRange="[1.21,1.22)"
+versionRange="[26.1,)"
 ordering="NONE"
 side="SERVER"
 

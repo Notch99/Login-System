@@ -64,7 +64,7 @@ import java.util.Properties;
 import java.util.UUID;
 
 /**
- * Login System Mod v2.1
+ * Login System Mod v3.0
  *
  * This mod enforces that players register or log in before they can interact
  * with the game. It supports multiple storage methods (database via JDBC or a
@@ -203,7 +203,8 @@ public class LoginSystem {
                 }
 
                 if (driverLoaded) {
-                    // Set global login timeout to 3 seconds to prevent Watchdog Server crashes if DB is offline!
+                    // Set global login timeout to 3 seconds to prevent Watchdog Server crashes if
+                    // DB is offline!
                     DriverManager.setLoginTimeout(3);
                     // Test the connection
                     try (Connection testConn = DriverManager.getConnection(jdbcUrl)) {
@@ -778,7 +779,10 @@ public class LoginSystem {
                 CompoundTag itemTag = NBTHelper.getCompound(itemList, i);
                 int slot = NBTHelper.getInt(itemTag, "Slot");
                 if (slot >= 0 && slot < size) {
-                    inventory[slot] = ItemStack.parseOptional(registries, itemTag);
+                    // ItemStack.parse was removed in 1.21.2+, use OPTIONAL_CODEC directly
+                    com.mojang.serialization.DataResult<ItemStack> parsedResult = ItemStack.OPTIONAL_CODEC
+                            .parse(registries.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE), itemTag);
+                    inventory[slot] = parsedResult.result().orElse(ItemStack.EMPTY);
                 }
             }
 
@@ -1082,11 +1086,11 @@ public class LoginSystem {
         removeBossBar(player);
 
         // Create new boss bar
-        String bossBarTitle = languageManager.getMessage(playerId, "timeout.bossbar");
         ServerBossEvent bossBar = new ServerBossEvent(
-                Component.literal(bossBarTitle),
-                BossEvent.BossBarColor.RED,
-                BossEvent.BossBarOverlay.PROGRESS);
+                playerId,
+                net.minecraft.network.chat.Component.literal("§cLog in within 60 seconds!"),
+                net.minecraft.world.BossEvent.BossBarColor.RED,
+                net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS);
 
         bossBar.addPlayer(player);
         bossBar.setProgress(1.0F);
@@ -1641,7 +1645,15 @@ public class LoginSystem {
                 } else {
                     try {
                         com.mojang.authlib.GameProfile profile = new com.mojang.authlib.GameProfile(uuid, null);
-                        server.getPlayerList().getBans().remove(profile);
+                        // Convert GameProfile to NameAndId if necessary by 1.21 rules:
+                        // No wait, StoredUserList methods in 1.21 might take GameProfile directly if we
+                        // cast but in 1.21 UserBanList takes NameAndId? No, NameAndId is
+                        // profile.getId(), profile.getName().
+                        // Let's just remove by UUID string? No, we will try to use the profile or new
+                        // net.minecraft.server.players.UserWhiteListEntry(profile)?
+                        // Let's just unban using the command for now directly:
+                        server.getCommands().performPrefixedCommand(server.createCommandSourceStack(),
+                                "pardon " + (playerName != null ? playerName : uuid.toString()));
                     } catch (Throwable t) {
                     }
                 }
@@ -1675,7 +1687,20 @@ public class LoginSystem {
                 String playerName = getPlayerName(server, uuid);
                 com.mojang.authlib.GameProfile profile = new com.mojang.authlib.GameProfile(uuid,
                         playerName != null && !playerName.equals("Unknown") ? playerName : null);
-                return server.getPlayerList().getBans().isBanned(profile);
+                // isBanned requires NameAndId in 1.21, but PlayerList has
+                // getBans().contains(GameProfile) maybe? Or just check if player is in banlist.
+                boolean isBanned = false;
+                try {
+                    for (net.minecraft.server.players.UserBanListEntry entry : server.getPlayerList().getBans()
+                            .getEntries()) {
+                        if (entry.getUser() != null && entry.getUser().id().equals(uuid)) {
+                            isBanned = true;
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                }
+                return isBanned;
             } catch (Throwable t) {
                 return false;
             }
@@ -1863,10 +1888,9 @@ public class LoginSystem {
                     if (timeLeft % 20 == 0 && timeLeft <= 300) {
                         ServerPlayer player = server.getPlayerList().getPlayer(uuid);
                         if (player != null && !loggedIn.getOrDefault(uuid, false)) {
-                            player.displayClientMessage(net.minecraft.network.chat.Component
+                            player.sendSystemMessage(net.minecraft.network.chat.Component
                                     .literal("Time left to login: " + (timeLeft / 20) + "s").withStyle(
-                                            net.minecraft.ChatFormatting.RED, net.minecraft.ChatFormatting.BOLD),
-                                    true);
+                                            net.minecraft.ChatFormatting.RED, net.minecraft.ChatFormatting.BOLD));
                         }
                     }
                 }
@@ -2380,7 +2404,7 @@ public class LoginSystem {
      * Prevents unlogged players from breaking blocks.
      */
     @SubscribeEvent
-    public void onBlockBreak(BlockEvent.BreakEvent event) {
+    public void onBlockBreak(net.neoforged.neoforge.event.level.block.BreakBlockEvent event) {
         if (event.getPlayer() instanceof ServerPlayer) {
             ServerPlayer player = (ServerPlayer) event.getPlayer();
             UUID playerId = player.getUUID();

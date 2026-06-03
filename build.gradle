@@ -3,30 +3,33 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'maven-publish'
-    id 'net.neoforged.gradle.userdev' version '7.0.145'
+    id 'net.neoforged.moddev' version '2.0.141'
 }
 
-version = 2.1
-group = 2.1
+version = 3.0
+group = 3.0
 
 base {
     archivesName = "loginsystem"
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
-runs {
-    configureEach {
-        systemProperty 'forge.logging.markers', 'REGISTRIES'
-        systemProperty 'forge.logging.console.level', 'debug'
-        modSource project.sourceSets.main
-    }
-    client {
-        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-    }
-    server {
-        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        programArgument '--nogui'
+neoForge {
+    version = project.neo_version
+    
+    runs {
+        client {
+            client()
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            systemProperty 'forge.logging.console.level', 'debug'
+        }
+        server {
+            server()
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            systemProperty 'forge.logging.console.level', 'debug'
+            programArgument '--nogui'
+        }
     }
 }
 
@@ -35,6 +38,8 @@ repositories {
 }
 
 dependencies {
+    // No longer need manual 'neoforge' dependency as MDG handles it? 
+    // Wait, MDG still needs it usually. 
     implementation "net.neoforged:neoforge:${neo_version}"
     
     // MySQL JDBC Driver - embedded in final JAR
@@ -117,5 +122,11 @@ publishing {
 task executeReflectionTest(type: JavaExec) {
     mainClass = 'com.example.loginsystem.ReflectionTest'
     classpath = sourceSets.main.runtimeClasspath
+}
+
+task printClasspath {
+    doLast {
+        configurations.compileClasspath.files.each { println it }
+    }
 }
 

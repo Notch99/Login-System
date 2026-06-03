@@ -6,7 +6,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.nbt.CompoundTag;
@@ -15,8 +15,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.component.CustomData;
-import org.jetbrains.annotations.NotNull;
-import javax.annotation.Nonnull;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -41,12 +39,12 @@ public class AdminGUIMenu extends AbstractContainerMenu {
             for (int col = 0; col < 9; col++) {
                 this.addSlot(new Slot(container, col + row * 9, 8 + col * 18, 18 + row * 18) {
                     @Override
-                    public boolean mayPlace(@Nonnull ItemStack stack) {
+                    public boolean mayPlace(ItemStack stack) {
                         return false;
                     }
 
                     @Override
-                    public boolean mayPickup(@Nonnull Player player) {
+                    public boolean mayPickup(Player player) {
                         return false;
                     }
                 });
@@ -68,7 +66,7 @@ public class AdminGUIMenu extends AbstractContainerMenu {
     }
 
     @Override
-    public void clicked(int slotId, int button, @Nonnull ClickType clickType, @Nonnull Player player) {
+    public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
         if (slotId < 0 || slotId >= container.getContainerSize()) {
             return;
         }
@@ -135,10 +133,10 @@ public class AdminGUIMenu extends AbstractContainerMenu {
                         int rowsAffected = pstmt.executeUpdate();
                         if (rowsAffected > 0) {
                             loginSystem.removePlayerPassword(targetUUID);
-                            admin.sendSystemMessage(Component.literal("�aDeleted password for player: " + playerName)
+                            admin.sendSystemMessage(Component.literal("aDeleted password for player: " + playerName)
                                 .withStyle(ChatFormatting.GREEN));
                         } else {
-                            admin.sendSystemMessage(Component.literal("�cNo password found for player: " + playerName)
+                            admin.sendSystemMessage(Component.literal("cNo password found for player: " + playerName)
                                 .withStyle(ChatFormatting.RED));
                         }
                     }
@@ -147,33 +145,33 @@ public class AdminGUIMenu extends AbstractContainerMenu {
                 if (loginSystem.hasPlayerPassword(targetUUID)) {
                     loginSystem.removePlayerPassword(targetUUID);
                     loginSystem.savePasswordsToFile();
-                    admin.sendSystemMessage(Component.literal("�aDeleted password for player: " + playerName)
+                    admin.sendSystemMessage(Component.literal("aDeleted password for player: " + playerName)
                         .withStyle(ChatFormatting.GREEN));
                 } else {
-                    admin.sendSystemMessage(Component.literal("�cNo password found for player: " + playerName)
+                    admin.sendSystemMessage(Component.literal("cNo password found for player: " + playerName)
                         .withStyle(ChatFormatting.RED));
                 }
             }
         } catch (SQLException e) {
-            admin.sendSystemMessage(Component.literal("�cFailed to delete password from database!")
+            admin.sendSystemMessage(Component.literal("cFailed to delete password from database!")
                 .withStyle(ChatFormatting.RED));
             LoginSystem.LOGGER.error("Failed to delete password for UUID: " + targetUUID, e);
         }
     }
 
     @Override
-    public @NotNull ItemStack quickMoveStack(@Nonnull Player player, int index) {
+    public ItemStack quickMoveStack(Player player, int index) {
         return ItemStack.EMPTY; // EF9 shift-click
     }
 
     @Override
-    public boolean stillValid(@Nonnull Player player) {
+    public boolean stillValid(Player player) {
         net.minecraft.server.MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
         return server != null && PermissionHelper.hasPermissions(player, server, 2);
     }
 
     @Override
-    public void removed(@Nonnull Player player) {
+    public void removed(Player player) {
         super.removed(player);
     }
 }

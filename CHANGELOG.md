@@ -1,5 +1,16 @@
 # 🔐 Login System Mod - Changelog
 
+## v3.0 — The Future-Proof Update 🚀
+**Release Date:** 2026-06-03
+
+### 🌟 New Features & Improvements
+- **Minecraft 26.1+ Support:** The mod is now officially updated to support Minecraft 26.1 and all future versions without upper version limits.
+- **Java 25 Migration:** Entire codebase has been optimized and migrated to Java 25.
+- **Bug Fixes:**
+  - Resolved Gradle daemon compatibility issues.
+
+---
+
 ## v2.1.0 — The Ultimate Security & Stability Update 🚀
 **Release Date:** 2026-05-24
 

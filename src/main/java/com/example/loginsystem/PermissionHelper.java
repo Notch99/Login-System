@@ -161,7 +161,13 @@ public class PermissionHelper {
             if (server != null) {
                 var ops = server.getPlayerList().getOps();
                 // ops.get(GameProfile) returns non-null if the player is an op
-                Object entry = ops.get(player.getGameProfile());
+                Object entry = null;
+                for (net.minecraft.server.players.ServerOpListEntry opEntry : ops.getEntries()) {
+                    if (opEntry.getUser() != null && opEntry.getUser().id().equals(player.getUUID())) {
+                        entry = opEntry;
+                        break;
+                    }
+                }
                 return entry != null;
             }
         } catch (Throwable e) {

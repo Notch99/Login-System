@@ -1,0 +1,60 @@
+﻿To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.4.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :createMinecraftArtifacts UP-TO-DATE
+
+> Task :compileJava
+./gradlew : C:\Users\lenovo\OneDrive\Documents\mods\login mod\login neoforge 
+v3\src\main\java\com\example\loginsystem\AdminGUIMenu.java:9: error: cannot find symbol
+At line:1 char:1
++ ./gradlew compileJava > build_errors.txt 2>&1 ; Get-Content build_err ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\Users\lenovo...not find symbol:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+import net.minecraft.world.inventory.ClickType;
+                                    ^
+  symbol:   class ClickType
+  location: package net.minecraft.world.inventory
+C:\Users\lenovo\OneDrive\Documents\mods\login mod\login neoforge 
+v3\src\main\java\com\example\loginsystem\AdminGUIMenu.java:69: error: cannot find symbol
+    public void clicked(int slotId, int button, ClickType clickType, Player player) {
+                                                ^
+  symbol:   class ClickType
+  location: class AdminGUIMenu
+C:\Users\lenovo\OneDrive\Documents\mods\login mod\login neoforge 
+v3\src\main\java\com\example\loginsystem\LoginSystem.java:2399: error: cannot find symbol
+    public void onBlockBreak(net.neoforged.neoforge.event.level.BlockEvent.BreakEvent event) {
+                                                                          ^
+  symbol:   class BreakEvent
+  location: class BlockEvent
+C:\Users\lenovo\OneDrive\Documents\mods\login mod\login neoforge 
+v3\src\main\java\com\example\loginsystem\LoginSystem.java:783: error: cannot find symbol
+                    java.util.Optional<ItemStack> parsed = ItemStack.parse(registries, itemTag);
+                                                                    ^
+  symbol:   method parse(Provider,CompoundTag)
+  location: class ItemStack
+4 errors
+
+> Task :compileJava FAILED
+
+[Incubating] Problems report is available at: file:///C:/Users/lenovo/OneDrive/Documents/mods/login%20mod/login%20neoforge%20v3/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava'.
+> Compilation failed; see the compiler output below.
+  C:\Users\lenovo\OneDrive\Documents\mods\login mod\login neoforge 
+v3\src\main\java\com\example\loginsystem\AdminGUIMenu.java:9: error: cannot find symbol
+  import net.minecraft.world.inventory.ClickType;
+                                      ^
+    symbol:   class ClickType
+    location: package net.minecraft.world.inventory
+  4 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 27s
+2 actionable tasks: 1 executed, 1 up-to-date

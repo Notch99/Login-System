@@ -1,4 +1,4 @@
-# 🔐 Login System Mod v2.1.0
+# 🔐 Login System Mod v3.0
 
 Advanced authentication system for Minecraft servers with database support, secure encryption, admin alerts, and intuitive GUI management.
 
@@ -34,9 +34,9 @@ Advanced authentication system for Minecraft servers with database support, secu
 - **Real-time Logging**: Comprehensive logging system and security events
 
 ## 📋 System Requirements
-- **Minecraft**: 1.21.x
-- **NeoForge**: Compatible with 1.21.x NeoForge distributions
-- **Java**: 17 or higher
+- **Minecraft**: 26.1 and above
+- **NeoForge**: Compatible with 26.1+ NeoForge distributions
+- **Java**: 25 or higher
 - **Server Side Only**: No client installation required
 
 ## 🚀 Installation
