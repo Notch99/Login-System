@@ -1,8 +1,0 @@
-{
-    "pack": {
-        "description": "🔐 Login System Mod v1.3.0\nAdvanced authentication system for Minecraft servers\nSupports MySQL/MariaDB databases with secure SHA-256 encryption",
-        "pack_format": 15,
-        "forge:resource_pack_format": 15,
-        "forge:data_pack_format": 12
-    }
-}
