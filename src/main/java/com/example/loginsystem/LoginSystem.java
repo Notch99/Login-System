@@ -76,7 +76,7 @@ import java.util.UUID;
  * - Database support (MySQL, SQLite, PostgreSQL) via JDBC.
  * - Waiting area: Players are teleported to a configurable waiting area until
  * they log in.
- * - Inventory hiding: Unlogged players' inventories are hidden.
+ * - Action Bar: Provides visual feedback via action bar messages.
  * - Blindness effect: Unlogged players have a blindness effect applied.
  * - Double login prevention.
  * - Admin commands to view or delete stored passwords.
@@ -92,7 +92,7 @@ public class LoginSystem {
     // password).
     private final HashMap<UUID, String> playerPasswords = new HashMap<>();
     // Tracks whether a player has successfully logged in.
-    private final HashMap<UUID, Boolean> loggedIn = new HashMap<>();
+    public static final HashMap<UUID, Boolean> loggedIn = new HashMap<>();
     // Stores the player's original location (to be restored after login).
     private final HashMap<UUID, double[]> originalPositions = new HashMap<>();
     // Prevents disconnecting the same player multiple times.
@@ -203,7 +203,8 @@ public class LoginSystem {
                 }
 
                 if (driverLoaded) {
-                    // Set global login timeout to 3 seconds to prevent Watchdog Server crashes if DB is offline!
+                    // Set global login timeout to 3 seconds to prevent Watchdog Server crashes if
+                    // DB is offline!
                     DriverManager.setLoginTimeout(3);
                     // Test the connection
                     try (Connection testConn = DriverManager.getConnection(jdbcUrl)) {
@@ -245,8 +246,7 @@ public class LoginSystem {
      * The config file includes:
      * - General Settings (e.g., loginTimeout)
      * - Messages for various events (registration, login, errors, etc.)
-     * - Visual Effects & Inventory Control settings (blindness effect,
-     * hideInventory)
+     * - Visual Effects settings (blindness effect)
      * - Database settings (enableDatabase, jdbcurl)
      * - Waiting Area settings (coordinates for waiting area)
      */
@@ -285,14 +285,12 @@ public class LoginSystem {
                     + "# Message when a player is kicked for timeout.\n"
                     + "message.kickTimeout=You were kicked for not logging in! ⏰\n\n"
                     + "# ----------------------------\n"
-                    + "# Visual Effects & Inventory Control\n"
+                    + "# Visual Effects\n"
                     + "# ----------------------------\n"
                     + "# If true, applies a blindness effect to unlogged players.\n"
                     + "applyBlindness=true\n"
                     + "# Duration (in ticks) for the blindness effect (20 ticks = 1 second).\n"
-                    + "blindnessDuration=40\n"
-                    + "# If true, the player's inventory will be hidden until they log in.\n"
-                    + "hideInventory=true\n\n"
+                    + "blindnessDuration=40\n\n"
                     + "# ----------------------------\n"
                     + "# Database Settings\n"
                     + "# ----------------------------\n"
@@ -1914,24 +1912,8 @@ public class LoginSystem {
             double[] currentPos = new double[] { newPlayer.getX(), newPlayer.getY(), newPlayer.getZ() };
             originalPositions.put(newPlayerUUID, currentPos);
 
-            // Hide inventory if enabled and save to persistent storage
-            if (Boolean.parseBoolean(config.getProperty("hideInventory", "true"))) {
-                int containerSize = newPlayer.getInventory().getContainerSize();
-                ItemStack[] savedItems = new ItemStack[containerSize];
-                for (int i = 0; i < containerSize; i++) {
-                    ItemStack item = newPlayer.getInventory().getItem(i);
-                    // Properly handle empty slots to prevent null issues
-                    savedItems[i] = (item != null && !item.isEmpty()) ? item.copy() : ItemStack.EMPTY;
-                }
-                savedInventories.put(newPlayerUUID, savedItems);
-
-                // Save to persistent storage to survive server restarts
-                savePlayerDataPersistent(newPlayerUUID, savedItems, currentPos);
-            } else {
-                // Still save position to persistent storage even if inventory hiding is
-                // disabled
-                savePlayerDataPersistent(newPlayerUUID, new ItemStack[0], currentPos);
-            }
+            // Save position to persistent storage
+            savePlayerDataPersistent(newPlayerUUID, new ItemStack[0], currentPos);
         }
 
         // Teleport the player to the waiting area (configured in the config file).
@@ -1944,10 +1926,7 @@ public class LoginSystem {
         // Mark the player as not logged in.
         loggedIn.put(newPlayerUUID, false);
 
-        // Clear inventory for unlogged players (data is now safely persisted)
-        if (Boolean.parseBoolean(config.getProperty("hideInventory", "true"))) {
-            newPlayer.getInventory().clearContent();
-        }
+
 
         // Show login prompt with title and action bar
         String promptMsg = languageManager.getMessage(newPlayerUUID, "login.prompt");
@@ -2352,17 +2331,22 @@ public class LoginSystem {
                 ItemStack droppedItem = event.getEntity().getItem().copy();
 
                 if (!droppedItem.isEmpty()) {
-                    boolean added = player.getInventory().add(droppedItem);
-                    player.getInventory().setChanged();
+                    net.minecraft.server.MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+                    if (server != null) {
+                        server.execute(() -> {
+                            boolean added = player.getInventory().add(droppedItem);
+                            player.getInventory().setChanged();
 
-                    if (!added) {
-                        player.sendSystemMessage(
-                                Component.literal("Your inventory is full, so the item couldn't be returned.")
-                                        .withStyle(ChatFormatting.RED));
-                    } else {
-                        String msg = languageManager.getMessage(playerId, "restrict.drop");
-                        player.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.YELLOW));
-                        showActionBar(player, msg);
+                            if (!added) {
+                                player.sendSystemMessage(
+                                        Component.literal("Your inventory is full, so the item couldn't be returned.")
+                                                .withStyle(ChatFormatting.RED));
+                            } else {
+                                String msg = languageManager.getMessage(playerId, "restrict.drop");
+                                player.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.YELLOW));
+                                showActionBar(player, msg);
+                            }
+                        });
                     }
                 }
             }

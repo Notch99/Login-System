@@ -1,11 +1,18 @@
-# 🔐 Login System Mod - Changelog
+﻿# ðŸ” Login System Mod - Changelog
 
-## v2.1.0 — The Ultimate Security & Stability Update 🚀
+## v2.2 - Item Drop & Stability Hotfix
+
+### 🛡️ Bug Fixes & Improvements
+- **Item Drop Desync Fixed:** Re-engineered the item drop prevention (ItemTossEvent) with a 1-tick delay to prevent the client inventory from becoming visually desynced when an item drop is blocked.
+- **Mixins Cleanup:** Removed a lingering, redundant mixin that caused IllegalAccessError crashes when trying to drop items.
+- **Reflection Cleanup:** Silenced expected console spam (NoSuchMethodException) in the NBTHelper fallback logic when loading legacy player data.
+
+## v2.1.0 â€” The Ultimate Security & Stability Update ðŸš€
 **Release Date:** 2026-05-24
 
 This massive update focuses on bulletproofing your server against data-loss, exploits, and crashes, while vastly improving password security.
 
-### 🛡️ Major Security Features
+### ðŸ›¡ï¸ Major Security Features
 - **Double-Login / Name Spoofing Prevention (Offline Mode fixes):**
   - **Critical Exploit Patched:** Malicious users can no longer log in using an identical username to kick out a legitimate player before authentication!
   - **Native Protections:** Implemented surgical packet interception via Spongepowered Mixins removing the vanilla behavior that drops the original connection before verifying identity.
@@ -17,7 +24,7 @@ This massive update focuses on bulletproofing your server against data-loss, exp
   - **Removed "View Passwords":** Admins can no longer view plaintext passwords for users. 
   - **Password Reset Panel:** You can now forcefully factory-reset a user's password to a secure 6-digit random string which is sent securely to the admin initiating the change.
 
-### 🌐 The All-New Admin Web Dashboard
+### ðŸŒ The All-New Admin Web Dashboard
 - A complete browser-based administrative panel has been introduced! By visiting `http://localhost:<port>`, server owners can now:
   - Monitor all registered accounts and instantly see who is currently online with live coordinates.
   - Remotely Kick, Ban, Mute, or Unban players with the click of a button.
@@ -25,12 +32,12 @@ This massive update focuses on bulletproofing your server against data-loss, exp
   - Force-reset account passwords remotely.
   - Broadcast server-wide chat messages directly from the Web Interface.
 
-### 💾 Persistence & Data Safety
+### ðŸ’¾ Persistence & Data Safety
 - **Unlogged State Protection (Inventory/Location):**
   - Ever had players lose their inventory because the server crashed before they typed `/login`? Fixed.
   - Player inventory and exact location coordinates are now securely saved to JSON/Database automatically at connection handshake, guaranteeing 100% item retention and void-falling prevention during unintended restarts or disconnects.
 
-### ⚙️ Performance & Server Engine Optimizations
+### âš™ï¸ Performance & Server Engine Optimizations
 - **Fixed "Server Watchdog" 60-Second Crash Loops:**
   - Placed an aggressive 3-second `Fast Timeout` constraint globally on JDBC SQL. Servers will now instantaneously fallback to Local JSON Mode if the configured MySQL Database is offline, bypassing the dreaded 60-second connection timeout that forcibly kills Minecraft servers on launch.
 - **Fixed Server Shutdown Deadlocks:**
@@ -39,9 +46,9 @@ This massive update focuses on bulletproofing your server against data-loss, exp
 ---
 
 ## v1.6.0 (Latest) - January 2026
-### 🛡️ Security Enhancement Update
+### ðŸ›¡ï¸ Security Enhancement Update
 
-### 🚨 Admin Alert System (NEW!)
+### ðŸš¨ Admin Alert System (NEW!)
 - **Suspicious Login Detection**: Alerts admins when a player fails login 3+ times
 - **Real-time Notifications**: Admins receive instant alerts with Player IP, Failed attempts, and Warnings.
 - **Console Logging**: Security events logged for review
@@ -50,14 +57,14 @@ This massive update focuses on bulletproofing your server against data-loss, exp
 ---
 
 ## v1.4.0 - October 2025
-### 🎉 Major Updates - GUI Revolution
-- 🎨 **NEW: Complete Admin GUI System**: Graphical interface for player management
-- 🖱️ **Interactive Player Management**: Click-based account management
-- 👤 **Real Minecraft Skins**: Display actual player skins
-- 🔒 **Ultimate Security**: 13+ comprehensive protection systems for unlogged players
-- 💬 **Instant Password Access**: Hover tooltips and click-to-view passwords
+### ðŸŽ‰ Major Updates - GUI Revolution
+- ðŸŽ¨ **NEW: Complete Admin GUI System**: Graphical interface for player management
+- ðŸ–±ï¸ **Interactive Player Management**: Click-based account management
+- ðŸ‘¤ **Real Minecraft Skins**: Display actual player skins
+- ðŸ”’ **Ultimate Security**: 13+ comprehensive protection systems for unlogged players
+- ðŸ’¬ **Instant Password Access**: Hover tooltips and click-to-view passwords
 
-### 🗡️ Protection Layers (13 Systems)
+### ðŸ—¡ï¸ Protection Layers (13 Systems)
 1. Movement restriction (waiting area)
 2. Block breaking prevention
 3. Block placing prevention
@@ -75,16 +82,17 @@ This massive update focuses on bulletproofing your server against data-loss, exp
 ---
 
 ## v1.3.0 - August 2025
-### 🎉 Major Updates
-- ✅ **Embedded JDBC Drivers**: Added MySQL and MariaDB drivers directly in JAR
-- ✅ **Advanced Admin Commands**: Overhaul of admin command system
-- ✅ **UUID Support**: Full support for both online and offline players
+### ðŸŽ‰ Major Updates
+- âœ… **Embedded JDBC Drivers**: Added MySQL and MariaDB drivers directly in JAR
+- âœ… **Advanced Admin Commands**: Overhaul of admin command system
+- âœ… **UUID Support**: Full support for both online and offline players
 
 ---
 
 ## v1.2.0 - April 2025
-- ✅ **Database Support**: Full MySQL/MariaDB integration
-- ✅ **SHA-256 Encryption**: Secure password hashing
+- âœ… **Database Support**: Full MySQL/MariaDB integration
+- âœ… **SHA-256 Encryption**: Secure password hashing
 
 ## v1.1.0 - March 2025
-- ✅ **Basic Authentication**: Register and login system with file storage
+- âœ… **Basic Authentication**: Register and login system with file storage
+

@@ -6,8 +6,8 @@ plugins {
     id 'net.neoforged.gradle.userdev' version '7.0.145'
 }
 
-version = 2.1
-group = 2.1
+version = 2.2
+group = 2.2
 
 base {
     archivesName = "loginsystem"

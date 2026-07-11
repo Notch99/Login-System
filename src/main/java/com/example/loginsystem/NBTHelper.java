@@ -29,7 +29,8 @@ public class NBTHelper {
             methodCache.put(key, m);
             return m;
         } catch (Exception e) {
-            LOGGER.error("Failed to find method " + methodName + " on " + clazz.getSimpleName(), e);
+            // Only log at debug level since this is often an expected fallback
+            LOGGER.debug("Failed to find method " + methodName + " on " + clazz.getSimpleName());
             methodCache.put(key, null);
             return null;
         }
