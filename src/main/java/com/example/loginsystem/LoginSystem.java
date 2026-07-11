@@ -66,7 +66,7 @@ import java.util.UUID;
  * - Database support (MySQL, SQLite, PostgreSQL) via JDBC.
  * - Waiting area: Players are teleported to a configurable waiting area until
  * they log in.
- * - Inventory hiding: Unlogged players' inventories are hidden.
+ * - Action Bar: Provides visual feedback via action bar messages.
  * - Blindness effect: Unlogged players have a blindness effect applied.
  * - Double login prevention.
  * - Admin commands to view or delete stored passwords.
@@ -122,7 +122,8 @@ public class LoginSystem implements ModInitializer {
     // Custom Ban System to avoid mapping/obfuscation issues
     public static java.util.Map<UUID, Long> tempBans = new java.util.concurrent.ConcurrentHashMap<>();
 
-    // Robust Player Name Cache to avoid offline player resolution crashes (NoSuchMethodError)
+    // Robust Player Name Cache to avoid offline player resolution crashes
+    // (NoSuchMethodError)
     public static java.util.Map<UUID, String> knownPlayerNames = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static final String DEFAULT_DATABASE_URL = "jdbc:sqlite:loginsystem.db";
@@ -210,8 +211,9 @@ public class LoginSystem implements ModInitializer {
                     tempBans.put(UUID.fromString(entry.getKey()), entry.getValue().getAsLong());
                 }
             }
-        } catch (Exception e) {}
-        
+        } catch (Exception e) {
+        }
+
         try {
             java.nio.file.Path namesFile = java.nio.file.Paths.get("config/loginsystem_names.json");
             if (java.nio.file.Files.exists(namesFile)) {
@@ -221,7 +223,8 @@ public class LoginSystem implements ModInitializer {
                     knownPlayerNames.put(UUID.fromString(entry.getKey()), entry.getValue().getAsString());
                 }
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+        }
     }
 
     private void saveBans() {
@@ -231,29 +234,33 @@ public class LoginSystem implements ModInitializer {
                 obj.addProperty(entry.getKey().toString(), entry.getValue());
             }
             java.nio.file.Files.writeString(java.nio.file.Paths.get("config/loginsystem_bans.json"), obj.toString());
-        } catch (Exception e) {}
-        
+        } catch (Exception e) {
+        }
+
         try {
             com.google.gson.JsonObject obj = new com.google.gson.JsonObject();
             for (java.util.Map.Entry<UUID, String> entry : knownPlayerNames.entrySet()) {
                 obj.addProperty(entry.getKey().toString(), entry.getValue());
             }
             java.nio.file.Files.writeString(java.nio.file.Paths.get("config/loginsystem_names.json"), obj.toString());
-        } catch (Exception e) {}
+        } catch (Exception e) {
+        }
     }
 
     public void banPlayer(UUID uuid, String reason, int durationDays) {
         if (serverInstance != null) {
             serverInstance.execute(() -> {
                 String playerName = getPlayerName(serverInstance, uuid);
-                long expires = durationDays > 0 ? System.currentTimeMillis() + (durationDays * 86400000L) : Long.MAX_VALUE;
+                long expires = durationDays > 0 ? System.currentTimeMillis() + (durationDays * 86400000L)
+                        : Long.MAX_VALUE;
                 tempBans.put(uuid, expires);
                 saveBans();
-                
+
                 if (playerName != null && !playerName.equals("Unknown")) {
-                    serverInstance.getCommandManager().executeWithPrefix(serverInstance.getCommandSource(), "ban " + playerName + " " + reason);
+                    serverInstance.getCommandManager().executeWithPrefix(serverInstance.getCommandSource(),
+                            "ban " + playerName + " " + reason);
                 }
-                
+
                 ServerPlayerEntity player = serverInstance.getPlayerManager().getPlayer(uuid);
                 if (player != null) {
                     String msg = "You are banned: " + reason;
@@ -271,14 +278,16 @@ public class LoginSystem implements ModInitializer {
             serverInstance.execute(() -> {
                 String playerName = getPlayerName(serverInstance, uuid);
                 if (playerName != null && !playerName.equals("Unknown")) {
-                    serverInstance.getCommandManager().executeWithPrefix(serverInstance.getCommandSource(), "pardon " + playerName);
+                    serverInstance.getCommandManager().executeWithPrefix(serverInstance.getCommandSource(),
+                            "pardon " + playerName);
                 } else {
                     try {
                         com.mojang.authlib.GameProfile profile = new com.mojang.authlib.GameProfile(uuid, null);
                         serverInstance.getPlayerManager().getUserBanList().remove(profile);
-                    } catch(Throwable t) {}
+                    } catch (Throwable t) {
+                    }
                 }
-                
+
                 tempBans.remove(uuid);
                 saveBans();
             });
@@ -295,16 +304,18 @@ public class LoginSystem implements ModInitializer {
                 if (serverInstance != null) {
                     String name = getPlayerName(serverInstance, uuid);
                     if (name != null && !name.equals("Unknown")) {
-                        serverInstance.getCommandManager().executeWithPrefix(serverInstance.getCommandSource(), "pardon " + name);
+                        serverInstance.getCommandManager().executeWithPrefix(serverInstance.getCommandSource(),
+                                "pardon " + name);
                     }
                 }
             }
         }
-        
+
         if (serverInstance != null) {
             try {
                 String playerName = getPlayerName(serverInstance, uuid);
-                com.mojang.authlib.GameProfile profile = new com.mojang.authlib.GameProfile(uuid, playerName != null && !playerName.equals("Unknown") ? playerName : null);
+                com.mojang.authlib.GameProfile profile = new com.mojang.authlib.GameProfile(uuid,
+                        playerName != null && !playerName.equals("Unknown") ? playerName : null);
                 return serverInstance.getPlayerManager().getUserBanList().contains(profile);
             } catch (Throwable t) {
                 return false;
@@ -383,11 +394,11 @@ public class LoginSystem implements ModInitializer {
                 }
             }
         }
-        
+
         if (knownPlayerNames.containsKey(uuid)) {
             return knownPlayerNames.get(uuid);
         }
-        
+
         return "Unknown";
     }
 
@@ -555,7 +566,8 @@ public class LoginSystem implements ModInitializer {
                 }
 
                 if (driverLoaded) {
-                    // Set global login timeout to 3 seconds to prevent Watchdog Server crashes if DB is offline!
+                    // Set global login timeout to 3 seconds to prevent Watchdog Server crashes if
+                    // DB is offline!
                     DriverManager.setLoginTimeout(3);
                     // Test the connection
                     try (Connection testConn = DriverManager.getConnection(jdbcUrl)) {
@@ -602,29 +614,40 @@ public class LoginSystem implements ModInitializer {
 
     private void registerEventHandlers() {
         // Prevent double login spoofing in offline mode
-        net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents.QUERY_START.register((handler, server, sender, synchronizer) -> {
-            try {
-                String loginName = null;
-                for (java.lang.reflect.Method m : handler.getClass().getMethods()) {
-                    if (m.getReturnType() == com.mojang.authlib.GameProfile.class && m.getParameterCount() == 0) {
-                        com.mojang.authlib.GameProfile profile = (com.mojang.authlib.GameProfile) m.invoke(handler);
-                        if (profile != null) { loginName = profile.getName(); break; }
-                    }
-                }
-                if (loginName == null) {
-                    for (java.lang.reflect.Field f : handler.getClass().getDeclaredFields()) {
-                        if (f.getType() == String.class) {
-                            f.setAccessible(true);
-                            String val = (String) f.get(handler);
-                            if (val != null && !val.isEmpty()) { loginName = val; break; }
+        net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents.QUERY_START
+                .register((handler, server, sender, synchronizer) -> {
+                    try {
+                        String loginName = null;
+                        for (java.lang.reflect.Method m : handler.getClass().getMethods()) {
+                            if (m.getReturnType() == com.mojang.authlib.GameProfile.class
+                                    && m.getParameterCount() == 0) {
+                                com.mojang.authlib.GameProfile profile = (com.mojang.authlib.GameProfile) m
+                                        .invoke(handler);
+                                if (profile != null) {
+                                    loginName = profile.getName();
+                                    break;
+                                }
+                            }
                         }
+                        if (loginName == null) {
+                            for (java.lang.reflect.Field f : handler.getClass().getDeclaredFields()) {
+                                if (f.getType() == String.class) {
+                                    f.setAccessible(true);
+                                    String val = (String) f.get(handler);
+                                    if (val != null && !val.isEmpty()) {
+                                        loginName = val;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (loginName != null && server.getPlayerManager().getPlayer(loginName) != null) {
+                            handler.disconnect(
+                                    net.minecraft.text.Text.literal("A player with this name is already online!"));
+                        }
+                    } catch (Exception e) {
                     }
-                }
-                if (loginName != null && server.getPlayerManager().getPlayer(loginName) != null) {
-                    handler.disconnect(net.minecraft.text.Text.literal("A player with this name is already online!"));
-                }
-            } catch (Exception e) {}
-        });
+                });
 
         // Register commands with security wrapper
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
@@ -664,7 +687,8 @@ public class LoginSystem implements ModInitializer {
                 String reason = "You are banned from this server.";
                 if (expire != Long.MAX_VALUE) {
                     long hoursLeft = (expire - System.currentTimeMillis()) / 3600000L;
-                    reason += " Expires in ~" + (hoursLeft > 24 ? (hoursLeft / 24) + " days" : hoursLeft + " hours") + ".";
+                    reason += " Expires in ~" + (hoursLeft > 24 ? (hoursLeft / 24) + " days" : hoursLeft + " hours")
+                            + ".";
                 }
                 handler.disconnect(Text.literal(reason));
                 return;
@@ -698,18 +722,17 @@ public class LoginSystem implements ModInitializer {
 
         // Register item drop events to prevent unlogged players from dropping items
         DropItemCallback.EVENT.register((player, stack) -> {
-            if (player instanceof ServerPlayerEntity serverPlayer && !player.getWorld().isClient()) {
+            if (player instanceof ServerPlayerEntity serverPlayer) {
                 UUID playerId = serverPlayer.getUuid();
                 if (!loggedIn.getOrDefault(playerId, false)) {
                     String msg = languageManager.getMessage(playerId, "restrict.drop");
                     serverPlayer.sendMessage(Text.literal(msg).formatted(Formatting.RED), false);
                     showActionBar(serverPlayer, msg);
-                    return net.minecraft.util.ActionResult.FAIL; // Cancel the drop
+                    return true; // Cancel the drop
                 }
             }
-            return net.minecraft.util.ActionResult.PASS; // Allow the drop
+            return false; // Allow the drop
         });
-
         // Register damage events to prevent unlogged players from taking damage
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, damageSource, amount) -> {
             if (entity instanceof ServerPlayerEntity player) {
@@ -755,8 +778,7 @@ public class LoginSystem implements ModInitializer {
      * The config file includes:
      * - General Settings (e.g., loginTimeout)
      * - Messages for various events (registration, login, errors, etc.)
-     * - Visual Effects & Inventory Control settings (blindness effect,
-     * hideInventory)
+     * - Visual Effects settings (blindness effect)
      * - Database settings (enableDatabase, jdbcurl)
      * - Waiting Area settings (coordinates for waiting area)
      */
@@ -793,14 +815,12 @@ public class LoginSystem implements ModInitializer {
                     + "# Message when a player is kicked for timeout.\n"
                     + "message.kickTimeout=You were kicked for not logging in! \n\n"
                     + "# ----------------------------\n"
-                    + "# Visual Effects & Inventory Control\n"
+                    + "# Visual Effects\n"
                     + "# ----------------------------\n"
                     + "# If true, applies a blindness effect to unlogged players.\n"
                     + "applyBlindness=true\n"
                     + "# Duration (in ticks) for the blindness effect (20 ticks = 1 second).\n"
-                    + "blindnessDuration=40\n"
-                    + "# If true, the player's inventory will be hidden until they log in.\n"
-                    + "hideInventory=true\n\n"
+                    + "blindnessDuration=40\n\n"
                     + "# ----------------------------\n"
                     + "# Database Settings\n"
                     + "# ----------------------------\n"
@@ -1290,7 +1310,8 @@ public class LoginSystem implements ModInitializer {
                                     boolean isPasswordCorrect = false;
                                     boolean needsUpgrade = false;
 
-                                    if (storedHash.startsWith("$2a$") || storedHash.startsWith("$2b$") || storedHash.startsWith("$2y$")) {
+                                    if (storedHash.startsWith("$2a$") || storedHash.startsWith("$2b$")
+                                            || storedHash.startsWith("$2y$")) {
                                         isPasswordCorrect = org.mindrot.jbcrypt.BCrypt.checkpw(password, storedHash);
                                     } else {
                                         String legacyHash = hashPasswordLegacy(password);
@@ -1315,7 +1336,8 @@ public class LoginSystem implements ModInitializer {
                                         } else {
                                             savePasswordsToFile();
                                         }
-                                        LOGGER.info("Upgraded password to BCrypt for player " + player.getName().getString());
+                                        LOGGER.info("Upgraded password to BCrypt for player "
+                                                + player.getName().getString());
                                     }
                                     loggedIn.put(playerId, true);
                                     setLastLogin(playerId);
@@ -1366,8 +1388,10 @@ public class LoginSystem implements ModInitializer {
                                             String storedHash = playerPasswords.get(playerId);
                                             boolean isPasswordCorrect = false;
 
-                                            if (storedHash.startsWith("$2a$") || storedHash.startsWith("$2b$") || storedHash.startsWith("$2y$")) {
-                                                isPasswordCorrect = org.mindrot.jbcrypt.BCrypt.checkpw(oldPassword, storedHash);
+                                            if (storedHash.startsWith("$2a$") || storedHash.startsWith("$2b$")
+                                                    || storedHash.startsWith("$2y$")) {
+                                                isPasswordCorrect = org.mindrot.jbcrypt.BCrypt.checkpw(oldPassword,
+                                                        storedHash);
                                             } else {
                                                 String legacyHash = hashPasswordLegacy(oldPassword);
                                                 if (storedHash.equals(legacyHash)) {
@@ -1532,7 +1556,7 @@ public class LoginSystem implements ModInitializer {
          * final String finalPlayerName = targetPlayerName;
          * // Ø¹Ø±Ø¶ ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ø§Ù„Ø£ØµÙ„ÙŠØ© Ø¥Ø°Ø§ ÙƒØ§Ù†Øª Ù…ØªØ§Ø­Ø©ØŒ
          * ÙˆØ¥Ù„Ø§ Ø¹Ø±Ø¶ Ø§Ù„Ù€ hash
-            String displayPassword = "[HIDDEN]";
+         * String displayPassword = "[HIDDEN]";
          * context.getSource().sendFeedback(() ->
          * Text.literal("Player " + finalPlayerName + " has password: " +
          * displayPassword)
@@ -1633,12 +1657,12 @@ public class LoginSystem implements ModInitializer {
      * - Prevents double login by disconnecting duplicate connections.
      * - Stores the player's original location and teleports them to the waiting
      * area.
-     * - Applies inventory hiding and blindness effect until login.
+     * - Applies blindness effect until login.
      */
     private void onPlayerLogin(ServerPlayerEntity newPlayer) {
         MinecraftServer server = LoginSystem.serverInstance;
         UUID newPlayerUUID = newPlayer.getUuid();
-        
+
         knownPlayerNames.put(newPlayerUUID, newPlayer.getName().getString());
         saveBans();
 
@@ -1688,17 +1712,6 @@ public class LoginSystem implements ModInitializer {
         // Create boss bar for timeout countdown
         int timeout = Integer.parseInt(config.getProperty("loginTimeout", "60"));
         createLoginBossBar(newPlayer, timeout);
-
-        // Hide inventory if enabled.
-        if (Boolean.parseBoolean(config.getProperty("hideInventory", "true"))) {
-            int containerSize = newPlayer.getInventory().size();
-            ItemStack[] savedItems = new ItemStack[containerSize];
-            for (int i = 0; i < containerSize; i++) {
-                savedItems[i] = newPlayer.getInventory().getStack(i).copy();
-            }
-            savedInventories.put(newPlayerUUID, savedItems);
-            newPlayer.getInventory().clear();
-        }
 
         // Apply blindness effect if enabled.
         if (Boolean.parseBoolean(config.getProperty("applyBlindness", "true"))) {
@@ -2199,19 +2212,22 @@ public class LoginSystem implements ModInitializer {
     }
 
     public void decodeUnloggedState(UUID uuid, String snbt) {
-        if (snbt == null || snbt.isEmpty()) return;
+        if (snbt == null || snbt.isEmpty())
+            return;
         try {
             NbtCompound root = StringNbtReader.parse(snbt);
             if (root.contains("Pos", NbtElement.LIST_TYPE)) {
                 NbtList posList = root.getList("Pos", NbtElement.DOUBLE_TYPE);
                 if (posList.size() >= 3) {
-                    originalPositions.put(uuid, new double[]{posList.getDouble(0), posList.getDouble(1), posList.getDouble(2)});
+                    originalPositions.put(uuid,
+                            new double[] { posList.getDouble(0), posList.getDouble(1), posList.getDouble(2) });
                 }
             }
             if (root.contains("Inventory", NbtElement.LIST_TYPE)) {
                 NbtList invList = root.getList("Inventory", NbtElement.COMPOUND_TYPE);
                 ItemStack[] items = new ItemStack[41];
-                for (int i = 0; i < items.length; i++) items[i] = ItemStack.EMPTY;
+                for (int i = 0; i < items.length; i++)
+                    items[i] = ItemStack.EMPTY;
                 RegistryOps<NbtElement> ops = serverInstance.getRegistryManager().getOps(NbtOps.INSTANCE);
                 for (int i = 0; i < invList.size(); i++) {
                     NbtCompound slotNbt = invList.getCompound(i);
@@ -2230,10 +2246,11 @@ public class LoginSystem implements ModInitializer {
     public void saveUnloggedState(UUID uuid) {
         double[] pos = originalPositions.get(uuid);
         ItemStack[] items = savedInventories.get(uuid);
-        if (pos == null && items == null) return;
-        
+        if (pos == null && items == null)
+            return;
+
         String encoded = encodeUnloggedState(pos, items);
-        
+
         if (enableDatabase) {
             try (Connection conn = DriverManager.getConnection(jdbcUrl)) {
                 String sql = "INSERT INTO player_unlogged_states (uuid, state_data) VALUES (?, ?) ON DUPLICATE KEY UPDATE state_data = VALUES(state_data)";
@@ -2274,7 +2291,7 @@ public class LoginSystem implements ModInitializer {
             java.util.Set<UUID> allStored = new HashSet<>();
             allStored.addAll(originalPositions.keySet());
             allStored.addAll(savedInventories.keySet());
-            
+
             for (UUID uuid : allStored) {
                 double[] pos = originalPositions.get(uuid);
                 ItemStack[] items = savedInventories.get(uuid);
@@ -2289,18 +2306,21 @@ public class LoginSystem implements ModInitializer {
     }
 
     public void loadAllUnloggedStates() {
-        if (serverInstance == null) return;
+        if (serverInstance == null)
+            return;
         originalPositions.clear();
         savedInventories.clear();
-        
+
         if (enableDatabase) {
             try (Connection conn = DriverManager.getConnection(jdbcUrl)) {
-                try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SELECT uuid, state_data FROM player_unlogged_states")) {
+                try (Statement stmt = conn.createStatement();
+                        ResultSet rs = stmt.executeQuery("SELECT uuid, state_data FROM player_unlogged_states")) {
                     while (rs.next()) {
                         try {
                             UUID uuid = UUID.fromString(rs.getString("uuid"));
                             decodeUnloggedState(uuid, rs.getString("state_data"));
-                        } catch(Exception e) {}
+                        } catch (Exception e) {
+                        }
                     }
                 }
             } catch (SQLException e) {
@@ -2315,13 +2335,15 @@ public class LoginSystem implements ModInitializer {
                         try {
                             UUID uuid = UUID.fromString(entry.getKey());
                             decodeUnloggedState(uuid, entry.getValue().getAsString());
-                        } catch(Exception e) {}
+                        } catch (Exception e) {
+                        }
                     }
                 } catch (Exception e) {
                     LOGGER.error("Failed to load unlogged states from file", e);
                 }
             }
         }
-        LOGGER.info("Loaded unlogged states: " + originalPositions.size() + " positions, " + savedInventories.size() + " inventories");
+        LOGGER.info("Loaded unlogged states: " + originalPositions.size() + " positions, " + savedInventories.size()
+                + " inventories");
     }
 }
