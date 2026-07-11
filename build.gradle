@@ -1,0 +1,127 @@
+plugins {
+    id 'java-library'
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[7.0.3,8)'
+}
+
+version = 2.0
+group = 2.0
+
+base {
+    archivesName = "loginsystem"
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+minecraft {
+    mappings channel: 'official', version: project.minecraft_version
+
+    runs {
+        configureEach {
+            workingDir = layout.projectDirectory.dir('run')
+            systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            systemProperty 'forge.logging.console.level', 'debug'
+        }
+
+        register('client') {
+        }
+        register('server') {
+            args '--nogui'
+        }
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+}
+
+dependencies {
+    implementation minecraft.dependency("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
+    
+    // MySQL JDBC Driver - embedded in final JAR
+    implementation 'mysql:mysql-connector-java:8.0.33'
+    
+    // MariaDB JDBC Driver - embedded in final JAR (backup)
+    implementation 'org.mariadb.jdbc:mariadb-java-client:3.1.4'
+    
+    // BCrypt for password hashing - embedded in final JAR
+    implementation 'org.mindrot:jbcrypt:0.4'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+jar {
+    manifest {
+        attributes([
+            'Specification-Title': project.name,
+            'Specification-Vendor': 'LoginSystem',
+            'Specification-Version': project.version,
+            'Implementation-Title': project.name,
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'LoginSystem',
+            'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+    
+    // دمج JDBC drivers في JAR
+    from {
+        configurations.runtimeClasspath.findAll { it.name.endsWith('.jar') && 
+            (it.name.contains('mysql-connector') || it.name.contains('mariadb') || it.name.contains('jbcrypt')) 
+        }.collect { zipTree(it) }
+    }
+    
+    // تحسين حجم JAR بإزالة الملفات غير الضرورية
+    exclude '**/module-info.class'
+    exclude '**/META-INF/maven/**'
+    exclude '**/META-INF/gradle/**'
+    exclude '**/META-INF/*.SF'
+    exclude '**/META-INF/*.DSA'
+    exclude '**/META-INF/*.RSA'
+    exclude '**/META-INF/LICENSE*'
+    exclude '**/META-INF/NOTICE*'
+    exclude '**/*.md'
+    exclude '**/*.txt'
+    exclude '**/changelog*'
+    
+    // تجنب تضارب الملفات
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// مهمة لفحص حجم JAR النهائي
+task checkJarSize {
+    doLast {
+        def jarFile = file("build/libs/${base.archivesName.get()}-${version}.jar")
+        if (jarFile.exists()) {
+            def sizeInMB = jarFile.length() / (1024 * 1024)
+            println "📦 JAR Size: ${String.format('%.2f', sizeInMB)} MB"
+            if (sizeInMB > 5) {
+                println "⚠️  Warning: JAR size exceeds 5MB limit!"
+            } else {
+                println "✅ JAR size is within 5MB limit"
+            }
+        }
+    }
+}
+
+build.finalizedBy checkJarSize
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
+task executeReflectionTest(type: JavaExec) {
+    mainClass = 'com.example.loginsystem.ReflectionTest'
+    classpath = sourceSets.main.runtimeClasspath
+}

@@ -1,0 +1,10 @@
+modLoader="javafml"
+loaderVersion="[51,)"
+license="MIT"
+
+[[mods]]
+modId="loginsystem"
+version="2.0"
+displayName="Login System"
+description="A login system mod for the Minecraft 1.21 series that enables players to register and login on the server."
+minecraft_version_range="[1.21,1.21.12)"
