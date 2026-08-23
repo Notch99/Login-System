@@ -1,75 +1,86 @@
-﻿# ðŸ” Login System Mod v2.2 - Fabric Edition
+<div align="center">
 
-A comprehensive authentication system for Minecraft Fabric servers that requires players to register and login before they can interact with the game world.
+# 🔒 Login-System v3.1 - Fabric Edition
+### *Enterprise Authentication & Web Administration Suite for Minecraft Fabric*
 
-## âœ¨ Features
+[![Minecraft](https://img.shields.io/badge/Minecraft-1.21.x%20%7C%2026.x-brightgreen?style=for-the-badge&logo=minecraft)](https://github.com/Notch99/Login-System)
+[![Loader](https://img.shields.io/badge/Loader-Fabric-blue?style=for-the-badge)](https://github.com/Notch99/Login-System/tree/fabric)
+[![Version](https://img.shields.io/badge/Version-v3.1-blue?style=for-the-badge)](https://github.com/Notch99/Login-System/tree/fabric)
+[![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)](LICENSE.txt)
 
-### ðŸ”’ Security Features
-- **BCrypt Encryption**: All passwords are securely hashed using industry-standard BCrypt
-- **ðŸš« Anti-Spoofing Protection**: Intercepts blocks malicious double-logins
-- **Database Support**: MySQL and MariaDB with embedded JDBC drivers and timeout watchdogs
-- **File Fallback**: Automatic fallback to file storage if database is disabled
-- **Complete Player Lockdown**: 13+ protection systems for unlogged players (movement, block breaking, damage, etc.)
+<p align="center">
+  <b>High-performance, secure authentication mod for Fabric servers. Features real-time Web Dashboard, unified 2D world maps with Claim-System, SQLite/MySQL dual database, in-game chest GUI, and Arabic RTL support.</b>
+</p>
 
-### ðŸŒ Admin Web Dashboard (NEW!)
-- **Browser-Based Management**: Monitor your server via a live Web Interface
-- **Live Inventories**: View live inventories of players through the web browser.
-- **Remote Moderation**: Kick, Ban, Mute, and Unban entirely remotely.
+---
 
-### ðŸŽ® Player Experience
-- **Waiting Area System**: Players are teleported to a safe area until login
-- **ðŸ’¾ Offline Persistence**: Inventories and precise locations are safely backed up on join, preventing falling into the void.
-- **Inventory Protection**: Player inventories are hidden until authentication
-- **Blindness Effect**: Visual restriction for unlogged players
-- **Configurable Timeout**: Automatic kick for inactive players
+</div>
 
-### âš™ï¸ Administration Commands
-- **Player Commands**: 
-  - `/register <password> <confirmPassword>`
-  - `/login <password>`
-  - `/changepassword <oldPassword> <newPassword>`
-- **Admin Commands (OP Level 2+)**:
-  - `/loadmin` - Opens the Admin Management GUI
-  - *Note: Passwords are no longer visible to admins for security, but can be securely resettled.*
+## ✨ Key Features in v3.1
 
-## ðŸ“‹ System Requirements
-- **Minecraft**: 1.21.x
-- **Fabric Loader**: Compatible with latest 1.21.x loaders
-- **Fabric API**: Required
-- **Java**: 17 or higher
-- **Server Side Only**: No client installation required
+* 🌐 **Admin Web Dashboard**: Remote browser panel with live player management, inventory inspector, remote console, and unified Claim-System 2D world map on a single port!
+* 🔒 **Enterprise-Grade Security**: BCrypt password hashing, session auto-resume, IP rate-limiting, freeze timer, and anti-flood protection.
+* 💾 **Dual Database Storage**: Built-in SQLite (zero configuration) and MySQL / MariaDB connection pooling.
+* 🖥️ **Interactive In-Game Chest GUI**: Open visual player management menus with `/loginadmin`.
+* 🌍 **Multi-Language & RTL**: Full English (`en`) and Arabic (`ar`) support with native Right-to-Left formatting.
+* 🛡️ **Claim-System Integration**: Zero-conflict unified server dashboard.
 
-## ðŸš€ Installation & Setup
+---
 
-1. Install **Fabric Loader** on your server.
-2. Download and install the **Fabric API** mod.
-3. Place the mod's `.jar` file in your server's `mods` folder.
-4. Start the server (configuration files will be auto-generated).
-5. Configure settings in `config/loginsystem.properties`.
-6. Restart the server.
+## ⚡ Commands & Permissions
 
-## ðŸ—„ï¸ Database Configuration (Optional)
+### 👤 Player Commands
+| Command | Description | Permission |
+| :--- | :--- | :---: |
+| `/register <password> <confirm>` | Register your account | Everyone |
+| `/login <password>` | Log in to the server | Everyone |
+| `/changepassword <old> <new>` | Change your current password | Logged In |
+| `/login help` | Show help commands | Everyone |
 
-The mod supports MySQL and MariaDB databases with automatic fallback to file storage.
-To configure the database, open `config/loginsystem.properties`:
+### 👑 Admin Commands (OP Level 4)
+| Command | Description |
+| :--- | :--- |
+| `/loginadmin` | Open interactive Chest GUI menu |
+| `/loginadmin reset <player>` | Reset and clear player password |
+| `/loginadmin setpassword <player> <new>` | Force change player password |
+| `/loginadmin ban <player> [time] [reason]` | Ban player temporarily or permanently |
+| `/loginadmin unban <player>` | Remove ban from player |
+| `/loginadmin mute <player>` | Mute player in chat |
+| `/loginadmin unmute <player>` | Unmute player |
+| `/loginadmin reload` | Reload configuration file |
+
+---
+
+## ⚙️ Configuration (`config/loginsystem.properties`)
 
 ```properties
-enableDatabase=true
-database.host=127.0.0.1
-database.port=3306
-database.name=loginsystem
-database.username=root
-database.password=your_password
+# 🌐 Web Administration Dashboard
+enableWebPanel=true
+webPanelPort=20037
+webPanelPassword=admin
+
+# ⏱️ Authentication Timers (Seconds)
+loginTimeout=60
+sessionTimeout=1200
+
+# 💾 Database Storage
+enableDatabase=false
+dbType=sqlite
+dbHost=localhost
+dbPort=3306
+dbName=minecraft_login
+dbUser=root
+dbPassword=secret
+
+# 🌍 Language (en / ar)
+language=en
 ```
 
-## ðŸ› ï¸ Development Setup
+---
 
-1. Open project in your preferred IDE (IntelliJ/Eclipse/VSCode).
-2. Wait for Gradle to import the project.
-3. Run: `./gradlew genSources` to generate Minecraft sources.
-4. Use `./gradlew build` to build the mod, or `./gradlew runServer` to test it.
+## 🔨 Building
 
-## ðŸ“„ License & Support
-This mod is licensed under the MIT License. See `LICENSE.txt` for more details.
-For support or configuration help, please check the generated config file.
-
+```bash
+./gradlew build
+```
+The compiled JAR will be located at `build/libs/`.
