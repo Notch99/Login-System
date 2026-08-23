@@ -1,0 +1,16 @@
+{
+  "mappings": {
+    "com/example/loginsystem/mixin/PlayerMixin": {
+      "drop": "Lnet/minecraft/server/level/ServerPlayer;method_7336(Lnet/minecraft/world/item/ItemStack;ZZ)Lnet/minecraft/world/entity/item/ItemEntity;",
+      "dropItem": "Lnet/minecraft/server/level/ServerPlayer;method_7336(Lnet/minecraft/world/item/ItemStack;ZZ)Lnet/minecraft/world/entity/item/ItemEntity;"
+    }
+  },
+  "data": {
+    "named:intermediary": {
+      "com/example/loginsystem/mixin/PlayerMixin": {
+        "drop": "Lnet/minecraft/class_3222;method_7336(Lnet/minecraft/class_1799;ZZ)Lnet/minecraft/class_1542;",
+        "dropItem": "Lnet/minecraft/class_3222;method_7336(Lnet/minecraft/class_1799;ZZ)Lnet/minecraft/class_1542;"
+      }
+    }
+  }
+}
