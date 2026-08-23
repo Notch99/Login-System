@@ -1,99 +1,86 @@
-﻿# ðŸ” Login System Mod v2.0
+<div align="center">
 
-Advanced authentication system for Minecraft servers with database support, secure encryption, admin alerts, and intuitive GUI management.
+# 🔒 Login-System v3.1 - Forge Edition
+### *Enterprise Authentication & Web Administration Suite for Minecraft Forge*
 
-## âœ¨ Features
+[![Minecraft](https://img.shields.io/badge/Minecraft-1.21.x%20%7C%2026.x-brightgreen?style=for-the-badge&logo=minecraft)](https://github.com/Notch99/Login-System)
+[![Loader](https://img.shields.io/badge/Loader-Forge-gold?style=for-the-badge)](https://github.com/Notch99/Login-System/tree/forge)
+[![Version](https://img.shields.io/badge/Version-v3.1-blue?style=for-the-badge)](https://github.com/Notch99/Login-System/tree/forge)
+[![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)](LICENSE.txt)
 
-### ðŸ”’ Security Features
-- **BCrypt Encryption**: All passwords are securely hashed using industry-standard BCrypt (Cost 12)
-- **ðŸš« Anti-Spoofing Protection**: Intercepts and blocks malicious double-logins completely
-- **ðŸš¨ Admin Alert System**: Live notifications for suspicious logins and excessive failed attempts. 
-- **Database Support**: MySQL and MariaDB with embedded JDBC drivers (with Fast 3-sec Crash Guard)
-- **File Fallback**: Automatic fallback to file storage if database fails
-- **Admin Password Management**: Reset player passwords via GUI
-- **Complete Player Lockdown**: 13+ protection systems for unlogged players
+<p align="center">
+  <b>High-performance, secure authentication mod for Forge servers. Features real-time Web Dashboard, unified 2D world maps with Claim-System, SQLite/MySQL dual database, in-game chest GUI, and Arabic RTL support.</b>
+</p>
 
-### ðŸŒ Admin Web Dashboard (NEW!)
-- **Browser-Based Management**: Monitor your server via a live Web Interface on `http://localhost:<port>`
-- **Live Inventories**: View live inventories of players through the web browser.
-- **Remote Moderation**: Kick, Ban, Mute, and Unban entirely remotely.
+---
 
-### ðŸŽ® Player Experience
-- **Waiting Area System**: Players are teleported to a safe area until login
-- **ðŸ’¾ Offline Persistence**: Inventories and precise locations are backed up on join, preventing void-drop crashes.
-- **Inventory Protection**: Player inventories are hidden until authentication
-- **Blindness Effect**: Visual restriction for unlogged players
-- **Configurable Timeout**: Automatic kick for inactive players
-- **Complete Restriction**: Unlogged players cannot interact with anything
+</div>
 
-### âš™ï¸ Administration
-- **ðŸŽ¨ Admin GUI System**: Modern, intuitive in-game graphical interface (`/loadmin`)
-- **Real Player Skins**: Player heads display actual Minecraft skins
-- **Secure Password Reset**: Instantly generate random 6-digit passwords for users
-- **One-Click Management**: Easy player account deletion
-- **Real-time Logging**: Comprehensive logging system and security events
+## ✨ Key Features in v3.1
 
-## ðŸ“‹ System Requirements
-- **Minecraft**: 1.21.x
-- **NeoForge**: Compatible with 1.21.x NeoForge distributions
-- **Java**: 17 or higher
-- **Server Side Only**: No client installation required
+* 🌐 **Admin Web Dashboard**: Remote browser panel with live player management, inventory inspector, remote console, and unified Claim-System 2D world map on a single port!
+* 🔒 **Enterprise-Grade Security**: BCrypt password hashing, session auto-resume, IP rate-limiting, freeze timer, and anti-flood protection.
+* 💾 **Dual Database Storage**: Built-in SQLite (zero configuration) and MySQL / MariaDB connection pooling.
+* 🖥️ **Interactive In-Game Chest GUI**: Open visual player management menus with `/loginadmin`.
+* 🌍 **Multi-Language & RTL**: Full English (`en`) and Arabic (`ar`) support with native Right-to-Left formatting.
+* 🛡️ **Claim-System Integration**: Zero-conflict unified server dashboard.
 
-## ðŸš€ Installation
+---
 
-1. Download the latest JAR file from releases
-2. Place it in your server's `mods` folder
-3. Start the server to generate configuration files
-4. Configure database settings in `config/loginsystem.properties`
-5. Restart the server
+## ⚡ Commands & Permissions
 
-## âš¡ Commands
+### 👤 Player Commands
+| Command | Description | Permission |
+| :--- | :--- | :---: |
+| `/register <password> <confirm>` | Register your account | Everyone |
+| `/login <password>` | Log in to the server | Everyone |
+| `/changepassword <old> <new>` | Change your current password | Logged In |
+| `/login help` | Show help commands | Everyone |
 
-### Player Commands
-- `/register <password> <confirmPassword>` - Register a new account
-- `/login <password>` - Login to your account
-- `/changepassword <oldPassword> <newPassword>` - Change your password
+### 👑 Admin Commands (OP Level 4)
+| Command | Description |
+| :--- | :--- |
+| `/loginadmin` | Open interactive Chest GUI menu |
+| `/loginadmin reset <player>` | Reset and clear player password |
+| `/loginadmin setpassword <player> <new>` | Force change player password |
+| `/loginadmin ban <player> [time] [reason]` | Ban player temporarily or permanently |
+| `/loginadmin unban <player>` | Remove ban from player |
+| `/loginadmin mute <player>` | Mute player in chat |
+| `/loginadmin unmute <player>` | Unmute player |
+| `/loginadmin reload` | Reload configuration file |
 
-### Admin Commands (Permission Level 2+)
-- `/loadmin` - Open the Admin GUI Panel
+---
 
-## ðŸŽ¨ Admin GUI System
-
-The Admin GUI provides a visual interface for managing player accounts:
-
-### Main Menu
-Type `/loadmin` to see:
-- **ðŸ“– Info** (Book Icon) - View all players and hover to reveal passwords. 
-- **ðŸš« Delete Player** (Barrier Icon) - One-click account removal system.
-
-## ðŸ—„ï¸ Configuration (config/loginsystem.properties)
+## ⚙️ Configuration (`config/loginsystem.properties`)
 
 ```properties
-# Database Settings
-enableDatabase=true
-database.host=127.0.0.1
-database.port=3306
-database.name=loginsystem
-database.username=root
-database.password=your_password
+# 🌐 Web Administration Dashboard
+enableWebPanel=true
+webPanelPort=20037
+webPanelPassword=admin
 
-# Admin Alerts
-enableAdminAlerts=true
-maxFailedAttempts=3
-
-# Gameplay Settings
+# ⏱️ Authentication Timers (Seconds)
 loginTimeout=60
-applyBlindness=true
-hideInventory=true
+sessionTimeout=1200
+
+# 💾 Database Storage
+enableDatabase=false
+dbType=sqlite
+dbHost=localhost
+dbPort=3306
+dbName=minecraft_login
+dbUser=root
+dbPassword=secret
+
+# 🌍 Language (en / ar)
+language=en
 ```
 
-## ðŸ› Troubleshooting & Support
-- **Issue**: Database Connection Failed? Check your credentials in the config.
-- **Support**: Open an issue on GitHub for assistance!
+---
 
-## ðŸ“„ License & Credits
-MIT License Â© 2026 LoginSystem Team
+## 🔨 Building
 
-- **Forge API**: Thanks to the modding framework!
-- **Server-side only**: No client downloads needed!
-
+```bash
+./gradlew build
+```
+The compiled JAR will be located at `build/libs/`.
