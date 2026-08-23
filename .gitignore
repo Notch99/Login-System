@@ -1,0 +1,13 @@
+.gradle/
+build/
+bin/
+out/
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+forge-mdk/
+fix_*.py
+run/
+logs/
