@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔒 Login-System v3.1 - Forge Edition
+# 🔒 Login-System v3.0 - Forge Edition
 ### *Enterprise Authentication & Web Administration Suite for Minecraft Forge*
 
 [![Minecraft](https://img.shields.io/badge/Minecraft-1.21.x%20%7C%2026.x-brightgreen?style=for-the-badge&logo=minecraft)](https://github.com/Notch99/Login-System)
@@ -16,7 +16,7 @@
 
 </div>
 
-## ✨ Key Features in v3.1
+## ✨ Key Features in v3.0
 
 * 🌐 **Admin Web Dashboard**: Remote browser panel with live player management, inventory inspector, remote console, and unified Claim-System 2D world map on a single port!
 * 🔒 **Enterprise-Grade Security**: BCrypt password hashing, session auto-resume, IP rate-limiting, freeze timer, and anti-flood protection.
