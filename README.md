@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔒 Login-System v3.1
+# 🔒 Login-System 
 ### *The Ultimate Enterprise Authentication & Web Administration Suite for Minecraft*
 
 [![Minecraft](https://img.shields.io/badge/Minecraft-1.21.x%20%7C%2026.x-brightgreen?style=for-the-badge&logo=minecraft)](https://github.com/Notch99/Login-System)
