@@ -1,11 +1,9 @@
-package com.example.loginsystem;
-
 import net.minecraft.resources.ResourceKey;
 
-public class ReflectionTest {
+public class Test {
     public static void main(String[] args) {
         for (java.lang.reflect.Method m : ResourceKey.class.getDeclaredMethods()) {
-            System.out.println("METHOD: " + m.getName() + " -> " + m.getReturnType().getName());
+            System.out.println(m.getName() + " -> " + m.getReturnType().getName());
         }
     }
 }
